@@ -70,4 +70,17 @@ describe("game state machine", () => {
     expect(state.screen).toBe("result");
     expect(state.firstAnswerCorrect).toBe(true);
   });
+
+  it("hydrates an exact persisted sample-game state", () => {
+    const persisted = {
+      ...createInitialState(),
+      screen: "exploring" as const,
+      selectedImageUrl: "/sample-room.svg",
+      selectedImageName: "示例宿舍现场",
+      openedClueIds: ["clock", "mug"],
+      startedAt: 1000,
+    };
+
+    expect(transitionGame(createInitialState(), { type: "HYDRATE", state: persisted })).toEqual(persisted);
+  });
 });

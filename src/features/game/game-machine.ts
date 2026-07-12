@@ -21,6 +21,8 @@ export function createInitialState(): GameState {
 
 export function transitionGame(state: GameState, event: GameEvent): GameState {
   switch (event.type) {
+    case "HYDRATE":
+      return event.state;
     case "START":
       return { ...state, screen: "capture" };
     case "USE_SAMPLE":

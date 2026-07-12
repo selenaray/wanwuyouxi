@@ -25,6 +25,7 @@ export type GameState = {
 };
 
 export type GameEvent =
+  | { type: "HYDRATE"; state: GameState }
   | { type: "START" }
   | { type: "USE_SAMPLE" }
   | { type: "SELECT_IMAGE"; imageUrl: string; imageName: string }

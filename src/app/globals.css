@@ -5,15 +5,90 @@
   --font-mono: "SF Mono", "Roboto Mono", ui-monospace, monospace;
 }
 
-* { box-sizing: border-box; }
-
-html, body { min-height: 100%; }
-
-body {
-  margin: 0;
-  background: #09090b;
-  color: #fafafa;
-  font-family: var(--font-sans);
+:root {
+  --bg: #08090b;
+  --surface: #111216;
+  --surface-2: #191a20;
+  --text: #f5f1ec;
+  --muted: #9a9493;
+  --line: rgba(255,255,255,.12);
+  --accent: #d34a52;
+  --accent-bright: #ef646d;
+  --amber: #e7b66e;
 }
 
-button { font: inherit; }
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body { margin: 0; background: #050507; color: var(--text); font-family: var(--font-sans); }
+button, input { font: inherit; }
+button { color: inherit; }
+
+.app-stage { min-height: 100svh; display: grid; place-items: center; background: radial-gradient(circle at 50% 20%, #24151a 0, #09090b 38%, #050507 100%); }
+.phone-shell { position: relative; width: min(100%, 430px); min-height: 100svh; overflow: hidden; background: var(--bg); isolation: isolate; }
+.status-bar { position: absolute; z-index: 20; top: 0; left: 0; width: 100%; height: 44px; padding: 12px 22px 0; display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; letter-spacing: .02em; pointer-events: none; }
+.status-icons { letter-spacing: 2px; font-size: 9px; }
+.screen { min-height: 100svh; padding: 60px 22px 26px; position: relative; display: flex; flex-direction: column; overflow: hidden; }
+.eyebrow { margin: 0; color: var(--accent-bright); font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+.primary-button, .secondary-button { min-height: 54px; width: 100%; border-radius: 16px; border: 1px solid transparent; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-weight: 700; transition: transform .18s ease, opacity .18s ease, background .18s ease; }
+.primary-button { background: linear-gradient(135deg, #e2565e, #a92332); box-shadow: 0 14px 38px rgba(166,30,46,.26); }
+.secondary-button { justify-content: center; background: rgba(255,255,255,.055); border-color: var(--line); color: #d8d3d0; }
+.primary-button:active, .secondary-button:active { transform: scale(.985); }
+.primary-button:disabled { opacity: .28; box-shadow: none; cursor: not-allowed; }
+.action-stack { margin-top: auto; display: grid; gap: 10px; position: relative; z-index: 2; }
+.action-stack.compact { margin-top: 18px; }
+.text-button, .icon-button { min-width: 44px; min-height: 44px; border: 0; background: transparent; cursor: pointer; }
+
+.home-screen { padding-top: 58px; background: linear-gradient(180deg, rgba(28,15,20,.35), transparent 45%); }
+.brand-row, .top-bar { height: 46px; display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 2; }
+.brand-mark { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; font-family: Georgia, serif; font-style: italic; }
+.text-button { color: var(--muted); font-size: 12px; }
+.ambient { position: absolute; border-radius: 999px; filter: blur(70px); opacity: .35; pointer-events: none; }
+.ambient-one { width: 230px; height: 230px; background: #6e1424; left: -110px; top: 160px; }
+.ambient-two { width: 180px; height: 180px; background: #58342b; right: -100px; top: 360px; }
+.home-visual { position: relative; height: 285px; display: grid; place-items: center; }
+.scan-frame { width: 226px; height: 226px; position: relative; border-radius: 50%; background: radial-gradient(circle, rgba(244,224,210,.14), rgba(39,23,28,.28) 48%, transparent 70%); }
+.scan-frame::before, .scan-frame::after { content: ""; position: absolute; inset: 32px; border: 1px solid rgba(255,255,255,.12); border-radius: 50%; }
+.scan-frame::after { inset: 63px; border-style: dashed; }
+.scan-corner { position: absolute; width: 33px; height: 33px; border-color: rgba(255,255,255,.7); border-style: solid; }
+.top-left { left: 0; top: 0; border-width: 2px 0 0 2px; }.top-right { right: 0; top: 0; border-width: 2px 2px 0 0; }.bottom-left { left: 0; bottom: 0; border-width: 0 0 2px 2px; }.bottom-right { right: 0; bottom: 0; border-width: 0 2px 2px 0; }
+.evidence-orbit { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: var(--accent-bright); box-shadow: 0 0 0 6px rgba(239,100,109,.12), 0 0 20px var(--accent); }
+.orbit-one { left: 33px; top: 93px; }.orbit-two { right: 43px; top: 47px; }.orbit-three { right: 70px; bottom: 32px; }
+.visual-label { position: absolute; bottom: 18px; color: #746f70; font: 9px var(--font-mono); letter-spacing: .14em; }
+.home-copy { position: relative; z-index: 2; }
+.home-copy h1 { margin: 8px 0 15px; font-size: 14px; font-family: Georgia, serif; letter-spacing: .08em; }
+.hero-title { margin: 0; font-family: Georgia, "Songti SC", serif; font-size: clamp(35px, 10vw, 45px); line-height: 1.08; letter-spacing: -.03em; }
+.hero-description { margin: 16px 0 0; max-width: 340px; color: var(--muted); font-size: 14px; line-height: 1.7; }
+.privacy-note { margin: 2px 0 0; text-align: center; color: #686466; font-size: 10px; }
+
+.top-bar { margin-bottom: 20px; }.top-bar > span:nth-child(2) { font-size: 14px; font-weight: 700; }.step-label { color: #716d70; font: 10px var(--font-mono); }
+.icon-button { border: 1px solid var(--line); border-radius: 50%; }
+.capture-copy h2, .deduction-copy h1, .error-screen h1 { margin: 9px 0; font-family: Georgia, "Songti SC", serif; font-size: 32px; line-height: 1.15; }
+.capture-copy > p:last-child, .deduction-copy > p:last-child, .error-screen > p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+.camera-frame { position: relative; flex: 1; min-height: 350px; max-height: 490px; margin: 22px 0 14px; border-radius: 24px; overflow: hidden; background: radial-gradient(circle, #22242a, #111216); border: 1px solid var(--line); }
+.camera-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.camera-empty { height: 100%; min-height: 350px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; text-align: center; color: var(--muted); }
+.camera-empty strong { color: #ddd7d3; font-size: 13px; }.camera-empty span { font-size: 11px; }
+.focus-reticle { display: grid; place-items: center; width: 72px; height: 72px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,.2); font-size: 30px; color: var(--accent); }
+.frame-corner { position: absolute; width: 28px; height: 28px; border-color: var(--accent-bright); border-style: solid; }.corner-a { left: 15px; top: 15px; border-width: 2px 0 0 2px; }.corner-b { right: 15px; top: 15px; border-width: 2px 2px 0 0; }.corner-c { left: 15px; bottom: 15px; border-width: 0 0 2px 2px; }.corner-d { right: 15px; bottom: 15px; border-width: 0 2px 2px 0; }
+.capture-tips { display: flex; justify-content: center; gap: 8px; margin-bottom: 8px; }.capture-tips span { padding: 6px 9px; border: 1px solid var(--line); border-radius: 99px; color: #8a8586; font-size: 9px; }
+.file-button { cursor: pointer; }.file-button input { position: absolute; width: 1px; height: 1px; opacity: 0; }.file-name { display: flex; justify-content: space-between; margin: 0 4px 8px; color: #d8d3d0; font-size: 11px; }.file-name span { color: var(--muted); }.inline-error { position: absolute; z-index: 30; bottom: 22px; left: 22px; right: 22px; padding: 14px; border-radius: 12px; background: #451820; border: 1px solid #9d3946; font-size: 12px; }
+
+.scanning-screen { padding: 0; background: #050507; }.scan-photo { position: absolute; inset: 0; }.scan-photo img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.65) contrast(1.08); }.scan-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,5,7,.25), rgba(5,5,7,.35) 40%, #08090b 82%); }.scan-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px); background-size: 42px 42px; }.scan-line { position: absolute; left: 0; right: 0; height: 2px; top: 20%; background: linear-gradient(90deg, transparent, var(--accent-bright), transparent); box-shadow: 0 0 26px var(--accent); animation: scan 2.1s ease-in-out infinite; }.scan-target { position: absolute; width: 42px; height: 42px; border: 1px solid var(--accent-bright); }.target-a { left: 68%; top: 21%; }.target-b { left: 20%; top: 59%; }.target-c { left: 52%; top: 66%; }
+.scanning-copy { position: relative; z-index: 2; margin-top: auto; padding: 0 26px 42px; }.scanner-glyph { width: 52px; height: 52px; display: grid; place-items: center; margin-bottom: 20px; border: 1px solid rgba(255,255,255,.2); border-radius: 50%; color: var(--accent-bright); font-size: 25px; }.scanning-copy h2 { margin: 9px 0 8px; font: 28px Georgia, "Songti SC", serif; }.scanning-copy > p:not(.eyebrow) { color: var(--muted); font-size: 12px; }.progress-track { height: 2px; margin: 22px 0 10px; background: rgba(255,255,255,.12); overflow: hidden; }.progress-track span { display: block; width: 68%; height: 100%; background: var(--accent-bright); animation: progress 1.6s ease-out forwards; }.scan-metrics { display: flex; justify-content: space-between; color: #6f6a6c; font: 8px var(--font-mono); letter-spacing: .1em; }
+
+.briefing-screen { background: linear-gradient(180deg, #100b0e, #08090b); }.case-number { display: flex; justify-content: space-between; color: #777174; font: 9px var(--font-mono); letter-spacing: .12em; }.briefing-art { height: 235px; margin: 22px 0; position: relative; display: grid; place-items: center; border: 1px solid var(--line); background: radial-gradient(circle, rgba(174,49,60,.18), transparent 54%), repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(255,255,255,.025) 24px); }.briefing-number { color: rgba(255,255,255,.08); font: 60px var(--font-mono); }.briefing-seal { position: absolute; transform: rotate(-8deg); padding: 8px 14px; border: 2px solid rgba(211,74,82,.65); color: rgba(239,100,109,.85); font: 11px var(--font-mono); letter-spacing: .14em; }.briefing-copy h1 { margin: 10px 0 12px; font: 38px/1.08 Georgia, "Songti SC", serif; }.briefing-copy > p:last-child { margin: 0; color: #aaa3a1; font-size: 13px; line-height: 1.75; }.objective-card { display: flex; gap: 13px; margin: 20px 0; padding: 15px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,255,255,.035); }.objective-icon { color: var(--accent-bright); font-size: 24px; }.objective-card div { display: flex; flex-direction: column; gap: 4px; }.objective-card small { color: var(--muted); font-size: 9px; }.objective-card strong { font-size: 12px; line-height: 1.5; }
+
+.explore-screen { padding: 0; background: #050507; }.overlay-top-bar { position: absolute; z-index: 4; top: 44px; left: 0; right: 0; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(#060608, transparent); }.overlay-top-bar strong { display: block; margin-top: 4px; font-size: 12px; }.clue-counter { font: 28px var(--font-mono); }.clue-counter small { color: var(--muted); font-size: 13px; }.scene-photo { position: absolute; inset: 0 0 155px; }.scene-photo > img { width: 100%; height: 100%; object-fit: cover; }.scene-vignette { position: absolute; inset: 0; background: radial-gradient(circle, transparent 40%, rgba(0,0,0,.5)), linear-gradient(180deg, rgba(0,0,0,.28), transparent 25%, rgba(0,0,0,.45)); pointer-events: none; }.clue-hotspot { position: absolute; z-index: 3; width: 58px; height: 58px; transform: translate(-50%,-50%); border: 0; background: transparent; cursor: pointer; }.hotspot-ring { position: absolute; inset: 3px; border: 1px solid rgba(239,100,109,.8); border-radius: 50%; animation: pulse 2s ease-out infinite; }.hotspot-dot { position: absolute; inset: 20px; display: grid; place-items: center; border-radius: 50%; background: var(--accent-bright); box-shadow: 0 0 20px var(--accent); font-size: 8px; }.clue-hotspot.collected .hotspot-ring { animation: none; border-color: rgba(255,255,255,.35); }.clue-hotspot.collected .hotspot-dot { inset: 17px; background: #ddd4cc; color: #17171a; box-shadow: none; }.scene-footer { position: absolute; z-index: 4; left: 0; right: 0; bottom: 0; min-height: 155px; padding: 18px 20px 24px; background: linear-gradient(180deg, rgba(8,9,11,.7), #08090b 25%); }.scene-footer > div { margin-bottom: 13px; }.scene-footer strong { display: block; margin-top: 4px; font-size: 12px; }
+.sheet-backdrop { position: absolute; z-index: 40; inset: 0; display: flex; align-items: flex-end; background: rgba(0,0,0,.52); backdrop-filter: blur(8px); }.clue-sheet { width: 100%; padding: 12px 22px 26px; border-radius: 28px 28px 0 0; background: #17171c; border-top: 1px solid rgba(255,255,255,.16); box-shadow: 0 -20px 60px rgba(0,0,0,.5); animation: sheet-up .28s ease-out; }.sheet-handle { width: 38px; height: 4px; margin: 0 auto 24px; border-radius: 99px; background: #4b474b; }.clue-sheet h2 { margin: 9px 0 12px; font: 29px Georgia, "Songti SC", serif; }.clue-sheet > p:not(.eyebrow) { color: #bbb4b1; font-size: 14px; line-height: 1.75; }.evidence-tag { display: flex; justify-content: space-between; margin: 20px 0; padding: 11px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: #767174; font: 9px var(--font-mono); }
+
+.deduction-screen { background: radial-gradient(circle at 50% 18%, #29161b, #09090b 40%); }.deduction-copy { margin-top: 16px; }.deduction-mark { display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 24px; border: 1px solid rgba(239,100,109,.45); border-radius: 50%; color: var(--accent-bright); font: 30px Georgia, serif; box-shadow: 0 0 40px rgba(166,30,46,.18); }.deduction-copy h1 { font-size: 39px; }.hint-card { margin: 17px 0 0; padding: 13px 15px; border-left: 2px solid var(--amber); background: rgba(231,182,110,.08); }.hint-card span { color: var(--amber); font: 9px var(--font-mono); }.hint-card p { margin: 5px 0 0; color: #d9c7aa; font-size: 11px; }.answer-list { display: grid; gap: 10px; margin: 24px 0 18px; }.answer-option { min-height: 66px; padding: 0 16px; display: flex; align-items: center; gap: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.035); cursor: pointer; }.answer-option input { position: absolute; opacity: 0; }.answer-option.selected { border-color: var(--accent-bright); background: rgba(211,74,82,.12); }.answer-letter { color: #767174; font: 11px var(--font-mono); }.answer-option strong { flex: 1; font-size: 14px; }.answer-radio { width: 18px; height: 18px; border: 1px solid #5b5659; border-radius: 50%; }.selected .answer-radio { border: 5px solid var(--accent-bright); }
+
+.result-screen { background: radial-gradient(circle at 50% 14%, #421a23, #0a090c 37%, #08090b 70%); text-align: center; }.result-glow { position: absolute; top: -70px; left: 50%; width: 280px; height: 280px; transform: translateX(-50%); border-radius: 50%; background: rgba(201,55,68,.18); filter: blur(70px); }.result-stamp { position: relative; width: 108px; height: 108px; margin: 28px auto 22px; display: flex; flex-direction: column; justify-content: center; border: 1px solid rgba(239,100,109,.55); border-radius: 50%; color: var(--accent-bright); transform: rotate(-5deg); }.result-stamp span { font: 9px var(--font-mono); letter-spacing: .2em; }.result-stamp strong { font: 22px Georgia, serif; }.result-screen h1 { margin: 9px 0 5px; font: 40px Georgia, "Songti SC", serif; }.result-subtitle { margin: 0; color: var(--muted); font-size: 12px; }.truth-card { margin-top: 22px; padding: 20px; text-align: left; border: 1px solid rgba(255,255,255,.13); border-radius: 20px; background: rgba(255,255,255,.045); }.truth-label { color: var(--accent-bright); font: 8px var(--font-mono); letter-spacing: .12em; }.truth-card h2 { margin: 10px 0 12px; font: 22px Georgia, "Songti SC", serif; }.truth-card p { margin: 0; color: #b4adab; font-size: 12px; line-height: 1.7; }.result-metrics { display: grid; grid-template-columns: repeat(3,1fr); margin-top: 14px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }.result-metrics div { padding: 12px 5px; display: flex; flex-direction: column; gap: 5px; border-right: 1px solid var(--line); }.result-metrics div:last-child { border: 0; }.result-metrics span { color: var(--muted); font-size: 8px; }.result-metrics strong { font: 13px var(--font-mono); }
+.error-screen { align-items: center; justify-content: center; text-align: center; background: repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(255,255,255,.02) 24px); }.error-code { position: absolute; top: 65px; color: #6b6668; font: 9px var(--font-mono); letter-spacing: .15em; }.error-glyph { width: 105px; height: 105px; display: grid; place-items: center; margin-bottom: 26px; border: 1px solid rgba(239,100,109,.35); border-radius: 50%; color: var(--accent-bright); font-size: 46px; }.error-screen > p:not(.eyebrow) { margin: 0 0 26px; max-width: 310px; }.privacy-sheet ul { margin: 16px 0 24px; padding-left: 20px; color: #bdb5b2; font-size: 12px; line-height: 1.8; }
+
+@keyframes scan { 0%,100% { top: 18%; opacity: .35; } 50% { top: 72%; opacity: 1; } }
+@keyframes progress { from { width: 5%; } to { width: 78%; } }
+@keyframes pulse { 0% { transform: scale(.55); opacity: 1; } 100% { transform: scale(1.25); opacity: 0; } }
+@keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@media (min-width: 500px) { .phone-shell { min-height: min(844px, 96svh); height: min(844px, 96svh); border: 1px solid rgba(255,255,255,.12); border-radius: 34px; box-shadow: 0 40px 100px rgba(0,0,0,.6); } .screen { min-height: 100%; height: 100%; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
