@@ -1,6 +1,7 @@
 import type { CaseRepository, GenerationJobRepository } from "@/server/db/repositories";
 import type { CaseJudgeProvider, VisionCaseProvider } from "@/server/providers/types";
 import type { ImageStorage } from "@/server/storage";
+import { validateGeneratedCase } from "@/server/cases/validator";
 
 type GenerationDependencies = {
   jobs: GenerationJobRepository;
@@ -32,8 +33,13 @@ export async function runGenerationJob(jobId: string, dependencies: GenerationDe
     }
 
     await dependencies.jobs.transitionJob(job.id, "VALIDATING");
+    const deterministic = validateGeneratedCase(generated, job.imageWidth / job.imageHeight);
+    if (!deterministic.publishable || !deterministic.game) {
+      await dependencies.jobs.transitionJob(job.id, "FAILED");
+      return;
+    }
     const validation = await dependencies.judge.validateCase({
-      game: generated.game,
+      game: deterministic.game,
       visibleObjectNames: generated.candidates,
       traceId: job.traceId,
     });
@@ -45,7 +51,7 @@ export async function runGenerationJob(jobId: string, dependencies: GenerationDe
     await dependencies.cases.publishCase({
       jobId: job.id,
       sessionId: job.sessionId,
-      privateCase: generated.game,
+      privateCase: deterministic.game,
       judgeDegraded: false,
     });
   } catch (error) {
@@ -56,4 +62,3 @@ export async function runGenerationJob(jobId: string, dependencies: GenerationDe
     throw error;
   }
 }
-
