@@ -39,5 +39,15 @@ export function loadGameState(): GameState {
 
 export function saveGameState(state: GameState): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  const persisted = state.mode === "live"
+    ? {
+        ...state,
+        selectedImageUrl: null,
+        selectedImageName: null,
+        selectedAnswerIndex: null,
+        caseData: null,
+        truth: null,
+      }
+    : state;
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
 }

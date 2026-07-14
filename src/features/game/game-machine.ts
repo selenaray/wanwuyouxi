@@ -16,6 +16,12 @@ export function createInitialState(): GameState {
     startedAt: null,
     revealedAt: null,
     errorCode: null,
+    mode: null,
+    imageId: null,
+    jobId: null,
+    caseId: null,
+    caseData: null,
+    truth: null,
   };
 }
 
@@ -32,6 +38,9 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         selectedImageUrl: SAMPLE_IMAGE_URL,
         selectedImageName: "示例宿舍现场",
         errorCode: null,
+        mode: "sample",
+        caseData: MOCK_CASE,
+        truth: MOCK_CASE.truth,
       };
     case "SELECT_IMAGE":
       return {
@@ -39,13 +48,29 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         screen: "capture",
         selectedImageUrl: event.imageUrl,
         selectedImageName: event.imageName,
+        mode: "live",
+        imageId: null,
+        jobId: null,
+        caseId: null,
+        caseData: null,
+        truth: null,
       };
     case "CONFIRM_IMAGE":
       return state.selectedImageUrl ? { ...state, screen: "scanning", errorCode: null } : state;
     case "SCAN_COMPLETE":
       return state.screen === "scanning" ? { ...state, screen: "briefing" } : state;
     case "SCAN_FAILED":
-      return { ...state, screen: "error", errorCode: "MOCK_TIMEOUT" };
+      return { ...state, screen: "error", errorCode: "GENERATION_FAILED" };
+    case "GENERATION_STARTED":
+      return { ...state, imageId: event.imageId, jobId: event.jobId };
+    case "GENERATION_SUCCEEDED":
+      return {
+        ...state,
+        screen: "briefing",
+        caseId: event.caseId,
+        caseData: event.caseData,
+        errorCode: null,
+      };
     case "RETRY_SCAN":
       return state.selectedImageUrl ? { ...state, screen: "scanning", errorCode: null } : state;
     case "ENTER_SCENE":
@@ -53,7 +78,7 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         ? { ...state, screen: "exploring", startedAt: event.now }
         : state;
     case "OPEN_CLUE": {
-      if (state.screen !== "exploring" || !MOCK_CASE.clues.some((clue) => clue.id === event.clueId)) {
+      if (state.screen !== "exploring" || !state.caseData?.clues.some((clue) => clue.id === event.clueId)) {
         return state;
       }
       const openedClueIds = state.openedClueIds.includes(event.clueId)
@@ -95,6 +120,29 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         firstAnswerCorrect: false,
       };
     }
+    case "ANSWER_RESPONSE":
+      if (!event.completed) {
+        return {
+          ...state,
+          selectedAnswerIndex: null,
+          attemptCount: event.attemptCount,
+          showHint: true,
+          firstAnswerCorrect: false,
+        };
+      }
+      return {
+        ...state,
+        attemptCount: event.attemptCount,
+        firstAnswerCorrect: event.attemptCount === 1 && event.correct,
+      };
+    case "REVEAL_LOADED":
+      return {
+        ...state,
+        screen: "result",
+        truth: event.truth,
+        firstAnswerCorrect: event.firstAnswerCorrect,
+        revealedAt: event.now,
+      };
     case "REPLAY":
       return createInitialState();
     default:

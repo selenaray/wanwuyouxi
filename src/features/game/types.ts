@@ -21,7 +21,13 @@ export type GameState = {
   firstAnswerCorrect: boolean | null;
   startedAt: number | null;
   revealedAt: number | null;
-  errorCode: "MOCK_TIMEOUT" | null;
+  errorCode: "GENERATION_FAILED" | null;
+  mode: "sample" | "live" | null;
+  imageId: string | null;
+  jobId: string | null;
+  caseId: string | null;
+  caseData: PlayerCase | null;
+  truth: string | null;
 };
 
 export type GameEvent =
@@ -32,6 +38,8 @@ export type GameEvent =
   | { type: "CONFIRM_IMAGE" }
   | { type: "SCAN_COMPLETE" }
   | { type: "SCAN_FAILED" }
+  | { type: "GENERATION_STARTED"; imageId: string; jobId: string }
+  | { type: "GENERATION_SUCCEEDED"; caseId: string; caseData: PlayerCase }
   | { type: "RETRY_SCAN" }
   | { type: "ENTER_SCENE"; now: number }
   | { type: "OPEN_CLUE"; clueId: string }
@@ -39,26 +47,34 @@ export type GameEvent =
   | { type: "BEGIN_DEDUCTION" }
   | { type: "SELECT_ANSWER"; answerIndex: number }
   | { type: "SUBMIT_ANSWER"; answerIndex: number; now: number }
+  | { type: "ANSWER_RESPONSE"; correct: boolean; completed: boolean; attemptCount: number; now: number }
+  | { type: "REVEAL_LOADED"; truth: string; firstAnswerCorrect: boolean | null; now: number }
   | { type: "REPLAY" };
 
-export type MockClue = {
+export type GameClue = {
   id: string;
   objectName: string;
   clueText: string;
   regionHint: string;
   x: number;
   y: number;
+  radius?: number;
+  confidence?: number;
 };
 
-export type MockCase = {
+export type PlayerCase = {
   title: string;
   caseNumber: string;
   background: string;
   objective: string;
-  clues: [MockClue, MockClue, MockClue];
+  interactionMode?: "HOTSPOT" | "CARD_FALLBACK";
+  clues: [GameClue, GameClue, GameClue];
   question: string;
   answerOptions: [string, string, string];
-  correctAnswerIndex: 0 | 1 | 2;
   wrongAnswerHint: string;
+};
+
+export type MockCase = PlayerCase & {
+  correctAnswerIndex: 0 | 1 | 2;
   truth: string;
 };

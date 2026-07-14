@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createInitialState, transitionGame } from "./game-machine";
+import { MOCK_CASE } from "./mock-case";
 
 describe("game state machine", () => {
   it("moves through the mock generation flow", () => {
@@ -25,6 +26,7 @@ describe("game state machine", () => {
       ...createInitialState(),
       screen: "exploring" as const,
       startedAt: 1000,
+      caseData: MOCK_CASE,
     };
 
     state = transitionGame(state, { type: "OPEN_CLUE", clueId: "clock" });
@@ -69,6 +71,35 @@ describe("game state machine", () => {
 
     expect(state.screen).toBe("result");
     expect(state.firstAnswerCorrect).toBe(true);
+  });
+
+  it("keeps the deduction visible until a live reveal has loaded", () => {
+    let state = {
+      ...createInitialState(),
+      screen: "deduction" as const,
+      mode: "live" as const,
+      openedClueIds: ["clock", "mug", "notebook"],
+      startedAt: 1000,
+    };
+
+    state = transitionGame(state, {
+      type: "ANSWER_RESPONSE",
+      correct: true,
+      completed: true,
+      attemptCount: 1,
+      now: 2000,
+    });
+    expect(state.screen).toBe("deduction");
+
+    state = transitionGame(state, {
+      type: "REVEAL_LOADED",
+      truth: "真相",
+      firstAnswerCorrect: true,
+      now: 2000,
+    });
+    expect(state.screen).toBe("result");
+    expect(state.truth).toBe("真相");
+    expect(state.revealedAt).toBe(2000);
   });
 
   it("hydrates an exact persisted sample-game state", () => {

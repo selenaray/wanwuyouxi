@@ -1,8 +1,8 @@
-import { MOCK_CASE } from "@/features/game/mock-case";
+import type { PlayerCase } from "@/features/game/types";
 
-type Props = { firstAnswerCorrect: boolean | null; elapsedSeconds: number; onReplay: () => void };
+type Props = { game: PlayerCase; truth: string; firstAnswerCorrect: boolean | null; elapsedSeconds: number; onReplay: () => void };
 
-export function ResultScreen({ firstAnswerCorrect, elapsedSeconds, onReplay }: Props) {
+export function ResultScreen({ game, truth, firstAnswerCorrect, elapsedSeconds, onReplay }: Props) {
   const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, "0");
   const seconds = String(elapsedSeconds % 60).padStart(2, "0");
 
@@ -14,9 +14,9 @@ export function ResultScreen({ firstAnswerCorrect, elapsedSeconds, onReplay }: P
       <h1>案件已解开</h1>
       <p className="result-subtitle">{firstAnswerCorrect ? "你一次就找到了隐藏的去向" : "真相总会在第二次审视中浮现"}</p>
       <article className="truth-card">
-        <span className="truth-label">真相档案 · {MOCK_CASE.caseNumber}</span>
-        <h2>{MOCK_CASE.title}</h2>
-        <p>{MOCK_CASE.truth}</p>
+        <span className="truth-label">真相档案 · {game.caseNumber}</span>
+        <h2>{game.title}</h2>
+        <p>{truth}</p>
       </article>
       <div className="result-metrics">
         <div><span>破解用时</span><strong>{minutes}:{seconds}</strong></div>
