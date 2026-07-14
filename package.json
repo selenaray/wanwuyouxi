@@ -17,6 +17,7 @@
     "worker:cleanup": "tsx scripts/cleanup-worker.ts"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.4",
     "@tailwindcss/postcss": "^4.1.0",
     "ali-oss": "^6.23.0",
     "dotenv": "^17.4.2",
