@@ -86,7 +86,7 @@ export function getGenerationJob(jobId: string) {
   return request<{ jobId: string; status: string; caseId: string | null }>(
     `/api/generation-jobs/${encodeURIComponent(jobId)}`,
     { method: "GET" },
-    z.object({ jobId: z.string(), status: z.enum(["PENDING", "PROCESSING", "VALIDATING", "SUCCEEDED", "REJECTED", "FAILED"]), caseId: z.string().nullable() }),
+    z.object({ jobId: z.string(), status: z.enum(["PENDING", "PROCESSING", "VALIDATING", "RETRYABLE_FAILED", "SUCCEEDED", "REJECTED", "FAILED"]), caseId: z.string().nullable() }),
   );
 }
 

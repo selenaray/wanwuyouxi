@@ -75,6 +75,20 @@ export async function createTestDatabase(): Promise<TestDatabase> {
       attempt_number integer NOT NULL,
       created_at timestamptz NOT NULL DEFAULT now()
     );
+    CREATE TABLE model_calls (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      job_id uuid NOT NULL REFERENCES generation_jobs(id),
+      provider varchar(40) NOT NULL,
+      model varchar(80) NOT NULL,
+      purpose varchar(40) NOT NULL,
+      input_tokens integer,
+      output_tokens integer,
+      latency_ms integer NOT NULL,
+      estimated_cost_cny real,
+      success boolean NOT NULL,
+      error_code varchar(80),
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
   `);
 
   const db = drizzle(client, { schema });

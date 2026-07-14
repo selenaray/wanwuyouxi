@@ -47,6 +47,16 @@ describe("game API client", () => {
     expect(await submitAnswer("case", 0)).toMatchObject({ correct: false, hint: "再想想" });
   });
 
+  it("accepts the retryable worker status while a job is recovering", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(apiResponse({
+      jobId: "job",
+      status: "RETRYABLE_FAILED",
+      caseId: null,
+    })));
+
+    await expect(getGenerationJob("job")).resolves.toMatchObject({ status: "RETRYABLE_FAILED" });
+  });
+
   it("sends a multipart upload and supports reveal and deletion", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(apiResponse({ imageId: "image", width: 1200, height: 900, expiresAt: "later" }, 201))
