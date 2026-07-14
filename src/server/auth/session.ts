@@ -71,3 +71,22 @@ export async function findSessionByCookie(
   return session;
 }
 
+export function readRequestCookie(request: Request, name: string) {
+  const header = request.headers.get("cookie") ?? "";
+  for (const part of header.split(";")) {
+    const [key, ...value] = part.trim().split("=");
+    if (key === name) return value.join("=");
+  }
+  return null;
+}
+
+export async function requireRequestSessionId(
+  request: Request,
+  db: AppDatabase,
+  secret = process.env.SESSION_SECRET ?? "",
+) {
+  const cookie = readRequestCookie(request, "wy_session");
+  if (!cookie) throw new Error("INVALID_SESSION");
+  return (await findSessionByCookie(db, cookie, secret)).id;
+}
+
