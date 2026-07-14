@@ -3,7 +3,7 @@ import { and, asc, eq, isNull, lt, or } from "drizzle-orm";
 import { toPlayerCase, type JobStatus, type PrivateCase } from "@/server/cases/contracts";
 
 import type { AppDatabase } from "./client";
-import { answerAttempts, cases, gameSessions, generationJobs } from "./schema";
+import { answerAttempts, cases, gameSessions, generationJobs, imageAssets } from "./schema";
 
 const allowedTransitions: Record<JobStatus, readonly JobStatus[]> = {
   PENDING: ["PROCESSING"],
@@ -76,6 +76,33 @@ export class GenerationJobRepository {
 
     if (!updated) throw new Error("JOB_TRANSITION_CONFLICT");
     return updated;
+  }
+
+  async getJob(id: string) {
+    const [job] = await this.db
+      .select()
+      .from(generationJobs)
+      .where(eq(generationJobs.id, id))
+      .limit(1);
+    return job ?? null;
+  }
+
+  async getJobWithImage(id: string) {
+    const [job] = await this.db
+      .select({
+        id: generationJobs.id,
+        sessionId: generationJobs.sessionId,
+        status: generationJobs.status,
+        traceId: generationJobs.traceId,
+        storageKey: imageAssets.storageKey,
+        imageWidth: imageAssets.width,
+        imageHeight: imageAssets.height,
+      })
+      .from(generationJobs)
+      .innerJoin(imageAssets, eq(generationJobs.imageAssetId, imageAssets.id))
+      .where(eq(generationJobs.id, id))
+      .limit(1);
+    return job ?? null;
   }
 
   async leaseNextJob(workerId: string, now: Date, leaseSeconds: number) {
