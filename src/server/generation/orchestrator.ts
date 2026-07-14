@@ -2,6 +2,7 @@ import type { CaseRepository, GenerationJobRepository } from "@/server/db/reposi
 import type { CaseJudgeProvider, VisionCaseProvider } from "@/server/providers/types";
 import type { ImageStorage } from "@/server/storage";
 import { validateGeneratedCase } from "@/server/cases/validator";
+import { ProviderError } from "@/server/providers/types";
 
 type GenerationDependencies = {
   jobs: GenerationJobRepository;
@@ -38,21 +39,51 @@ export async function runGenerationJob(jobId: string, dependencies: GenerationDe
       await dependencies.jobs.transitionJob(job.id, "FAILED");
       return;
     }
-    const validation = await dependencies.judge.validateCase({
-      game: deterministic.game,
-      visibleObjectNames: generated.candidates,
-      traceId: job.traceId,
-    });
-    if (!validation.valid) {
-      await dependencies.jobs.transitionJob(job.id, "FAILED");
-      return;
+    let privateCase = deterministic.game;
+    let judgeDegraded = false;
+    try {
+      const validation = await dependencies.judge.validateCase({
+        game: privateCase,
+        visibleObjectNames: generated.candidates,
+        traceId: job.traceId,
+      });
+      if (!validation.valid) {
+        if (validation.issues.some((issue) => issue.code === "UNSAFE")) {
+          await dependencies.jobs.transitionJob(job.id, "FAILED");
+          return;
+        }
+        const repaired = await dependencies.judge.repairCase({
+          game: privateCase,
+          issues: validation.issues,
+          traceId: job.traceId,
+        });
+        const repairedValidation = validateGeneratedCase(
+          { ...generated, game: repaired },
+          job.imageWidth / job.imageHeight,
+        );
+        if (!repairedValidation.publishable || !repairedValidation.game) {
+          await dependencies.jobs.transitionJob(job.id, "FAILED");
+          return;
+        }
+        privateCase = repairedValidation.game;
+      }
+    } catch (error) {
+      if (
+        error instanceof ProviderError &&
+        error.retryable &&
+        generated.logicalConfidence >= 0.9
+      ) {
+        judgeDegraded = true;
+      } else {
+        throw error;
+      }
     }
 
     await dependencies.cases.publishCase({
       jobId: job.id,
       sessionId: job.sessionId,
-      privateCase: deterministic.game,
-      judgeDegraded: false,
+      privateCase,
+      judgeDegraded,
     });
   } catch (error) {
     const latest = await dependencies.jobs.getJob(job.id);
