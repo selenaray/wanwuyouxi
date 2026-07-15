@@ -18,11 +18,11 @@ import {
   createGenerationJob,
   createSession,
   deleteImage,
-  getGenerationJob,
   getPlayerCase,
   revealCase,
   submitAnswer,
   uploadImage,
+  waitForGenerationJob,
 } from "./api-client";
 import { prepareImageForUpload } from "./image-compression";
 import { SAMPLE_IMAGE_URL } from "./mock-case";
@@ -84,8 +84,6 @@ export function GameApp() {
 
     let cancelled = false;
     generationRunning.current = true;
-    const wait = (milliseconds: number) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
-
     void (async () => {
       try {
         let jobId = resumableJobId.current;
@@ -99,19 +97,14 @@ export function GameApp() {
           if (!cancelled) dispatch({ type: "GENERATION_STARTED", imageId: uploaded.imageId, jobId });
         }
 
-        for (let attempt = 0; attempt < 20 && !cancelled; attempt += 1) {
-          const job = await getGenerationJob(jobId);
-          if (job.status === "SUCCEEDED" && job.caseId) {
-            const player = await getPlayerCase(job.caseId);
-            if (!cancelled) {
-              dispatch({ type: "GENERATION_SUCCEEDED", caseId: job.caseId, caseData: player.case });
-            }
-            return;
-          }
-          if (["REJECTED", "FAILED"].includes(job.status)) throw new Error(job.status);
-          await wait(attempt < 15 ? 1000 : 3000);
+        const completedJob = await waitForGenerationJob(jobId);
+        if (completedJob.status !== "SUCCEEDED" || !completedJob.caseId) {
+          throw new Error(completedJob.status);
         }
-        if (!cancelled) dispatch({ type: "SCAN_FAILED" });
+        const player = await getPlayerCase(completedJob.caseId);
+        if (!cancelled) {
+          dispatch({ type: "GENERATION_SUCCEEDED", caseId: completedJob.caseId, caseData: player.case });
+        }
       } catch {
         if (!cancelled) dispatch({ type: "SCAN_FAILED" });
       } finally {

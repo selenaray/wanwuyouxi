@@ -9,6 +9,7 @@ import {
   revealCase,
   submitAnswer,
   uploadImage,
+  waitForGenerationJob,
 } from "./api-client";
 
 function apiResponse(data: unknown, status = 200) {
@@ -19,7 +20,25 @@ function apiResponse(data: unknown, status = 200) {
 }
 
 describe("game API client", () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("waits long enough for a successful 45-second generation", async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() => {
+      calls += 1;
+      return Promise.resolve(apiResponse(calls >= 46
+        ? { jobId: "job", status: "SUCCEEDED", caseId: "case" }
+        : { jobId: "job", status: "PROCESSING", caseId: null }));
+    }));
+    const result = waitForGenerationJob("job");
+    await vi.advanceTimersByTimeAsync(45_000);
+
+    await expect(result).resolves.toMatchObject({ status: "SUCCEEDED", caseId: "case" });
+  });
 
   it("uses same-origin credentials for anonymous session and generation calls", async () => {
     const fetchMock = vi.fn()

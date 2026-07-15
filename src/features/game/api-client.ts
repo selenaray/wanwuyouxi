@@ -90,6 +90,29 @@ export function getGenerationJob(jobId: string) {
   );
 }
 
+type GenerationJobResult = Awaited<ReturnType<typeof getGenerationJob>>;
+
+export async function waitForGenerationJob(
+  jobId: string,
+  options: { timeoutMs?: number; intervalMs?: number } = {},
+): Promise<GenerationJobResult> {
+  const timeoutMs = options.timeoutMs ?? 90_000;
+  const intervalMs = options.intervalMs ?? 1_000;
+  const deadline = Date.now() + timeoutMs;
+
+  while (true) {
+    const job = await getGenerationJob(jobId);
+    if (["SUCCEEDED", "REJECTED", "FAILED", "RETRYABLE_FAILED"].includes(job.status)) {
+      return job;
+    }
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      throw new GameApiError("GENERATION_TIMEOUT", "现场重建仍在进行，请稍后重试", true);
+    }
+    await new Promise((resolve) => setTimeout(resolve, Math.min(intervalMs, remaining)));
+  }
+}
+
 export function getPlayerCase(caseId: string) {
   return request<{
     case: PlayerCase;
