@@ -96,7 +96,7 @@ export async function waitForGenerationJob(
   jobId: string,
   options: { timeoutMs?: number; intervalMs?: number } = {},
 ): Promise<GenerationJobResult> {
-  const timeoutMs = options.timeoutMs ?? 90_000;
+  const timeoutMs = options.timeoutMs ?? 120_000;
   const intervalMs = options.intervalMs ?? 1_000;
   const deadline = Date.now() + timeoutMs;
 

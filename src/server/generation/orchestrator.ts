@@ -89,6 +89,9 @@ export async function runGenerationJob(jobId: string, dependencies: GenerationDe
     const latest = await dependencies.jobs.getJob(job.id);
     if (latest?.status === "PROCESSING" || latest?.status === "VALIDATING") {
       await dependencies.jobs.transitionJob(job.id, "RETRYABLE_FAILED");
+      if (latest.attemptCount < 2) {
+        await dependencies.jobs.transitionJob(job.id, "PENDING");
+      }
     }
     throw error;
   }

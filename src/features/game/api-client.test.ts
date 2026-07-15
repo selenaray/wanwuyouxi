@@ -25,19 +25,20 @@ describe("game API client", () => {
     vi.unstubAllGlobals();
   });
 
-  it("waits long enough for a successful 45-second generation", async () => {
+  it("waits long enough for a successful 100-second retried generation", async () => {
     vi.useFakeTimers();
     let calls = 0;
     vi.stubGlobal("fetch", vi.fn().mockImplementation(() => {
       calls += 1;
-      return Promise.resolve(apiResponse(calls >= 46
+      return Promise.resolve(apiResponse(calls >= 101
         ? { jobId: "job", status: "SUCCEEDED", caseId: "case" }
         : { jobId: "job", status: "PROCESSING", caseId: null }));
     }));
     const result = waitForGenerationJob("job");
-    await vi.advanceTimersByTimeAsync(45_000);
+    const expectation = expect(result).resolves.toMatchObject({ status: "SUCCEEDED", caseId: "case" });
+    await vi.advanceTimersByTimeAsync(100_000);
 
-    await expect(result).resolves.toMatchObject({ status: "SUCCEEDED", caseId: "case" });
+    await expectation;
   });
 
   it("uses same-origin credentials for anonymous session and generation calls", async () => {

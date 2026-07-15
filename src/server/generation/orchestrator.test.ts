@@ -117,4 +117,36 @@ describe("runGenerationJob", () => {
     const [published] = await database.db.select().from(casesTable).where(eq(casesTable.jobId, job.id));
     expect(published.judgeDegraded).toBe(true);
   });
+
+  it("requeues one transient vision failure and stops after the second attempt", async () => {
+    const sessionId = await database.seedSession();
+    const imageAssetId = await database.seedImageAsset(sessionId, "retry-photo-hash");
+    const jobs = new GenerationJobRepository(database.db);
+    const job = await jobs.createGenerationJob({
+      sessionId,
+      imageAssetId,
+      imageSha256: "retry-photo-hash",
+      idempotencyKey: "retry-capture",
+    });
+    const dependencies = {
+      jobs,
+      cases: new CaseRepository(database.db),
+      storage: { createReadUrl: async () => "data:image/jpeg;base64,/9j/", put: async () => ({ key: "unused" }), delete: async () => undefined },
+      vision: {
+        async generateCase(): Promise<never> {
+          throw new ProviderError("UNAVAILABLE", "temporary");
+        },
+      },
+      judge: new FakeCaseJudgeProvider(),
+    };
+
+    await jobs.leaseNextJob("worker-retry-1", new Date(), 60);
+    await expect(runGenerationJob(job.id, dependencies)).rejects.toMatchObject({ code: "UNAVAILABLE" });
+    expect((await jobs.getJob(job.id))?.status).toBe("PENDING");
+
+    await jobs.leaseNextJob("worker-retry-2", new Date(), 60);
+    await expect(runGenerationJob(job.id, dependencies)).rejects.toMatchObject({ code: "UNAVAILABLE" });
+    expect((await jobs.getJob(job.id))?.status).toBe("RETRYABLE_FAILED");
+    expect((await jobs.getJob(job.id))?.attemptCount).toBe(2);
+  });
 });
