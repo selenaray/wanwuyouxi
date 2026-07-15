@@ -78,9 +78,9 @@ function normalizeGeneratedCase(value: unknown): unknown {
     }
   }
 
-  const interactionMode = game.interactionMode === "CARD_FALLBACK"
-    ? "CARD_FALLBACK"
-    : "HOTSPOT";
+  const interactionMode = game.interactionMode === "IMAGE_HOTSPOT"
+    ? "HOTSPOT"
+    : game.interactionMode;
   const candidates = Array.isArray(value.candidates)
     ? value.candidates.map((candidate) => {
         if (typeof candidate === "string" || !isRecord(candidate)) return candidate;

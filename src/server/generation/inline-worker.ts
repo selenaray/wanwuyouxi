@@ -14,14 +14,29 @@ type RunNextJob = () => Promise<boolean>;
 
 export function createInlineGenerationTrigger(runNextJob: RunNextJob) {
   let running: Promise<void> | undefined;
+  let requestedVersion = 0;
 
   return function trigger() {
+    requestedVersion += 1;
     if (running) return running;
 
     running = (async () => {
-      while (await runNextJob()) {
-        // Drain every job that is already pending before going idle.
-      }
+      await Promise.resolve();
+      let consecutiveFailures = 0;
+      let observedVersion: number;
+      do {
+        observedVersion = requestedVersion;
+        while (true) {
+          try {
+            const worked = await runNextJob();
+            consecutiveFailures = 0;
+            if (!worked) break;
+          } catch {
+            consecutiveFailures += 1;
+            if (consecutiveFailures >= 3) return;
+          }
+        }
+      } while (observedVersion !== requestedVersion);
     })().finally(() => {
       running = undefined;
     });

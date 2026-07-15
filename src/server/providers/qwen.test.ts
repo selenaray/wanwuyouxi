@@ -130,6 +130,26 @@ describe("QwenVisionProvider", () => {
     expect(result.candidates).toEqual(["台灯", "书本", "杯子"]);
   });
 
+  it("rejects unknown interaction modes instead of inventing hotspot confidence", async () => {
+    const unknownMode = JSON.stringify({
+      ...JSON.parse(validResponse),
+      game: { ...fakePrivateCase, interactionMode: "UNKNOWN_MODE" },
+    });
+    const provider = new QwenVisionProvider({
+      transport: new CapturingTransport(unknownMode),
+      model: "qwen3-vl-plus",
+      timeoutMs: 30_000,
+    });
+
+    await expect(provider.generateCase({
+      imageUrl: "data:image/jpeg;base64,/9j/",
+      imageWidth: 1200,
+      imageHeight: 900,
+      locale: "zh-CN",
+      traceId: "trace",
+    })).rejects.toMatchObject<Partial<ProviderError>>({ code: "BAD_OUTPUT" });
+  });
+
   it("states machine-checkable enum, id and tuple constraints in the prompt", async () => {
     const transport = new CapturingTransport(validResponse);
     const provider = new QwenVisionProvider({ transport, model: "qwen3-vl-plus", timeoutMs: 30_000 });
