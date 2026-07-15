@@ -9,19 +9,26 @@ import { createDeepSeekCaseJudgeFromEnv } from "../src/server/providers/deepseek
 import { createQwenVisionProviderFromEnv } from "../src/server/providers/qwen";
 import { getImageStorage } from "../src/server/storage";
 
-const { db } = await getRuntimeDatabase();
-const jobs = new GenerationJobRepository(db);
-const dependencies = {
-  jobs,
-  cases: new CaseRepository(db),
-  storage: getImageStorage(),
-  vision: process.env.QWEN_API_KEY ? createQwenVisionProviderFromEnv() : new FakeVisionCaseProvider(),
-  judge: process.env.DEEPSEEK_API_KEY
-    ? createDeepSeekCaseJudgeFromEnv()
-    : new FakeCaseJudgeProvider(),
-};
+async function main() {
+  const { db } = await getRuntimeDatabase();
+  const jobs = new GenerationJobRepository(db);
+  const dependencies = {
+    jobs,
+    cases: new CaseRepository(db),
+    storage: getImageStorage(),
+    vision: process.env.QWEN_API_KEY ? createQwenVisionProviderFromEnv() : new FakeVisionCaseProvider(),
+    judge: process.env.DEEPSEEK_API_KEY
+      ? createDeepSeekCaseJudgeFromEnv()
+      : new FakeCaseJudgeProvider(),
+  };
 
-await startGenerationWorker(`worker-${process.pid}`, {
-  jobs,
-  runJob: (jobId) => runGenerationJob(jobId, dependencies),
+  await startGenerationWorker(`worker-${process.pid}`, {
+    jobs,
+    runJob: (jobId) => runGenerationJob(jobId, dependencies),
+  });
+}
+
+void main().catch(() => {
+  console.error("generation worker failed to start");
+  process.exitCode = 1;
 });

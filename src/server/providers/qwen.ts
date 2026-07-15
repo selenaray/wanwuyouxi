@@ -44,6 +44,57 @@ type QwenVisionProviderOptions = {
   timeoutMs: number;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeGeneratedCase(value: unknown): unknown {
+  if (!isRecord(value) || value.decision !== "PASS" || !isRecord(value.game)) return value;
+
+  const game = value.game;
+  const clues = Array.isArray(game.clues)
+    ? game.clues.map((clue, index) => {
+        if (!isRecord(clue)) return clue;
+        const validId = typeof clue.id === "string" && /^[a-z0-9-]{1,32}$/.test(clue.id);
+        return validId ? clue : { ...clue, id: `clue-${index + 1}` };
+      })
+    : game.clues;
+
+  let answerOptions = game.answerOptions;
+  let correctAnswerIndex = game.correctAnswerIndex;
+  if (
+    Array.isArray(answerOptions) &&
+    answerOptions.length > 3 &&
+    typeof correctAnswerIndex === "number" &&
+    Number.isInteger(correctAnswerIndex) &&
+    correctAnswerIndex >= 0 &&
+    correctAnswerIndex < answerOptions.length
+  ) {
+    if (correctAnswerIndex < 3) {
+      answerOptions = answerOptions.slice(0, 3);
+    } else {
+      answerOptions = [answerOptions[0], answerOptions[1], answerOptions[correctAnswerIndex]];
+      correctAnswerIndex = 2;
+    }
+  }
+
+  const interactionMode = game.interactionMode === "CARD_FALLBACK"
+    ? "CARD_FALLBACK"
+    : "HOTSPOT";
+  const candidates = Array.isArray(value.candidates)
+    ? value.candidates.map((candidate) => {
+        if (typeof candidate === "string" || !isRecord(candidate)) return candidate;
+        return candidate.objectName ?? candidate.name ?? candidate.label ?? candidate;
+      })
+    : value.candidates;
+
+  return {
+    ...value,
+    candidates,
+    game: { ...game, interactionMode, clues, answerOptions, correctAnswerIndex },
+  };
+}
+
 export class QwenVisionProvider implements VisionCaseProvider {
   constructor(private readonly options: QwenVisionProviderOptions) {}
 
@@ -72,7 +123,7 @@ export class QwenVisionProvider implements VisionCaseProvider {
 
     try {
       const response = await this.options.transport.create(request, controller.signal);
-      const json: unknown = JSON.parse(response.content);
+      const json: unknown = normalizeGeneratedCase(JSON.parse(response.content));
       const parsed = GeneratedCaseSchema.safeParse(json);
       if (!parsed.success) throw new ProviderError("BAD_OUTPUT", "QWEN_SCHEMA_INVALID");
       return parsed.data;
@@ -102,4 +153,3 @@ export function createQwenVisionProviderFromEnv() {
     timeoutMs: Number(process.env.GENERATION_TIMEOUT_MS ?? 30_000),
   });
 }
-

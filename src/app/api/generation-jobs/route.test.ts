@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createTestDatabase, type TestDatabase } from "../../../../tests/helpers/database";
 
@@ -22,7 +22,12 @@ describe("POST /api/generation-jobs", () => {
   });
 
   it("returns immediately with one durable pending job", async () => {
-    const POST = createGenerationJobsRoute({ db: database.db, resolveSessionId: async () => sessionId });
+    const onJobCreated = vi.fn();
+    const POST = createGenerationJobsRoute({
+      db: database.db,
+      resolveSessionId: async () => sessionId,
+      onJobCreated,
+    });
     const request = () => new Request("http://test/api/generation-jobs", {
       method: "POST",
       headers: { "content-type": "application/json", "idempotency-key": "capture-1" },
@@ -37,5 +42,6 @@ describe("POST /api/generation-jobs", () => {
     expect(first.status).toBe(202);
     expect(firstBody.data.status).toBe("PENDING");
     expect(secondBody.data.jobId).toBe(firstBody.data.jobId);
+    expect(onJobCreated).toHaveBeenCalledWith(firstBody.data.jobId);
   });
 });

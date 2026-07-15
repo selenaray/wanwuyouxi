@@ -65,5 +65,87 @@ describe("QwenVisionProvider", () => {
       traceId: "trace",
     })).rejects.toMatchObject<Partial<ProviderError>>({ code: "BAD_OUTPUT" });
   });
-});
 
+  it("repairs known non-semantic contract drift before validation", async () => {
+    const driftedResponse = JSON.stringify({
+      decision: "PASS",
+      logicalConfidence: 0.96,
+      riskLabels: [],
+      candidates: ["台灯", "书本", "杯子"],
+      game: {
+        ...fakePrivateCase,
+        interactionMode: "IMAGE_HOTSPOT",
+        clues: fakePrivateCase.clues.map((clue) =>
+          Object.fromEntries(Object.entries(clue).filter(([key]) => key !== "id")),
+        ),
+        answerOptions: ["选项一", "选项二", "选项三", "正确选项"],
+        correctAnswerIndex: 3,
+      },
+    });
+    const provider = new QwenVisionProvider({
+      transport: new CapturingTransport(driftedResponse),
+      model: "qwen3-vl-plus",
+      timeoutMs: 30_000,
+    });
+
+    const result = await provider.generateCase({
+      imageUrl: "data:image/jpeg;base64,/9j/",
+      imageWidth: 1200,
+      imageHeight: 900,
+      locale: "zh-CN",
+      traceId: "trace",
+    });
+
+    expect(result.decision).toBe("PASS");
+    if (result.decision !== "PASS") throw new Error("expected PASS result");
+    expect(result.game.interactionMode).toBe("HOTSPOT");
+    expect(result.game.clues.map((clue) => clue.id)).toEqual(["clue-1", "clue-2", "clue-3"]);
+    expect(result.game.answerOptions).toEqual(["选项一", "选项二", "正确选项"]);
+    expect(result.game.correctAnswerIndex).toBe(2);
+  });
+
+  it("extracts candidate names when the model returns candidate objects", async () => {
+    const objectCandidates = JSON.stringify({
+      ...JSON.parse(validResponse),
+      candidates: [
+        { objectName: "台灯", confidence: 0.95 },
+        { name: "书本", confidence: 0.9 },
+        { label: "杯子", confidence: 0.88 },
+      ],
+    });
+    const provider = new QwenVisionProvider({
+      transport: new CapturingTransport(objectCandidates),
+      model: "qwen3-vl-plus",
+      timeoutMs: 30_000,
+    });
+
+    const result = await provider.generateCase({
+      imageUrl: "data:image/jpeg;base64,/9j/",
+      imageWidth: 1200,
+      imageHeight: 900,
+      locale: "zh-CN",
+      traceId: "trace",
+    });
+
+    expect(result.candidates).toEqual(["台灯", "书本", "杯子"]);
+  });
+
+  it("states machine-checkable enum, id and tuple constraints in the prompt", async () => {
+    const transport = new CapturingTransport(validResponse);
+    const provider = new QwenVisionProvider({ transport, model: "qwen3-vl-plus", timeoutMs: 30_000 });
+
+    await provider.generateCase({
+      imageUrl: "data:image/jpeg;base64,/9j/",
+      imageWidth: 1200,
+      imageHeight: 900,
+      locale: "zh-CN",
+      traceId: "trace",
+    });
+
+    const systemPrompt = String(transport.lastRequest?.messages[0]?.content ?? "");
+    expect(systemPrompt).toContain("interactionMode 只能是 HOTSPOT 或 CARD_FALLBACK");
+    expect(systemPrompt).toContain("clue.id 必须是字符串");
+    expect(systemPrompt).toContain("answerOptions 必须恰好包含 3 项");
+    expect(systemPrompt).toContain("candidates 必须是字符串数组");
+  });
+});

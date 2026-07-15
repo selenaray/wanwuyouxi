@@ -7,10 +7,12 @@ import type { AppDatabase } from "@/server/db/client";
 import { GenerationJobRepository } from "@/server/db/repositories";
 import { getRuntimeDatabase } from "@/server/db/runtime";
 import { imageAssets } from "@/server/db/schema";
+import { createLocalGenerationTrigger } from "@/server/generation/inline-worker";
 
 type Dependencies = {
   db: AppDatabase;
   resolveSessionId(request: Request): Promise<string>;
+  onJobCreated?(jobId: string): void | Promise<void>;
 };
 
 const BodySchema = z.object({ imageId: z.string().uuid() });
@@ -36,6 +38,13 @@ export function createGenerationJobsRoute(dependencies: Dependencies) {
         imageSha256: image.sha256,
         idempotencyKey,
       });
+      try {
+        void Promise.resolve(dependencies.onJobCreated?.(job.id)).catch(() => {
+          console.error("inline generation failed");
+        });
+      } catch {
+        console.error("inline generation failed to start");
+      }
       return NextResponse.json(
         { ok: true, data: { jobId: job.id, status: job.status }, traceId },
         { status: 202 },
@@ -58,6 +67,8 @@ export function createGenerationJobsRoute(dependencies: Dependencies) {
   };
 }
 
+let localGenerationTrigger: ReturnType<typeof createLocalGenerationTrigger> | undefined;
+
 function readCookie(request: Request, name: string) {
   const header = request.headers.get("cookie") ?? "";
   return header.split(";").map((part) => part.trim().split("=")).find(([key]) => key === name)?.slice(1).join("=") ?? null;
@@ -65,8 +76,10 @@ function readCookie(request: Request, name: string) {
 
 export async function POST(request: Request) {
   const { db } = await getRuntimeDatabase();
+  localGenerationTrigger ??= createLocalGenerationTrigger(db);
   return createGenerationJobsRoute({
     db,
+    onJobCreated: () => localGenerationTrigger?.(),
     resolveSessionId: async (incoming) => {
       const cookie = readCookie(incoming, "wy_session");
       if (!cookie) throw new Error("INVALID_SESSION");
@@ -74,4 +87,3 @@ export async function POST(request: Request) {
     },
   })(request);
 }
-
