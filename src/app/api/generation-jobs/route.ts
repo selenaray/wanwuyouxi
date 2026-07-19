@@ -8,11 +8,14 @@ import { GenerationJobRepository } from "@/server/db/repositories";
 import { getRuntimeDatabase } from "@/server/db/runtime";
 import { imageAssets } from "@/server/db/schema";
 import { createLocalGenerationTrigger } from "@/server/generation/inline-worker";
+import { startOfShanghaiDay } from "@/server/usage/daily-window";
 
 type Dependencies = {
   db: AppDatabase;
   resolveSessionId(request: Request): Promise<string>;
   onJobCreated?(jobId: string): void | Promise<void>;
+  now(): Date;
+  dailyGenerationLimit: number;
 };
 
 const BodySchema = z.object({ imageId: z.string().uuid() });
@@ -32,12 +35,29 @@ export function createGenerationJobsRoute(dependencies: Dependencies) {
         .limit(1);
       if (!image || image.deletedAt) throw new Error("IMAGE_NOT_FOUND");
 
-      const job = await new GenerationJobRepository(dependencies.db).createGenerationJob({
-        sessionId,
-        imageAssetId: image.id,
-        imageSha256: image.sha256,
-        idempotencyKey,
-      });
+      const repository = new GenerationJobRepository(dependencies.db);
+      const result = await repository.createWithinDailyLimit(
+        {
+          sessionId,
+          imageAssetId: image.id,
+          imageSha256: image.sha256,
+          idempotencyKey,
+        },
+        startOfShanghaiDay(dependencies.now()),
+        dependencies.dailyGenerationLimit,
+      );
+      if (result.limited || !result.job) {
+        return NextResponse.json({
+          ok: false,
+          error: {
+            code: "DAILY_CASE_LIMIT_REACHED",
+            message: "今天的真实案件体验次数已用完，明天再来吧",
+            retryable: false,
+          },
+          traceId,
+        }, { status: 429 });
+      }
+      const job = result.job;
       try {
         void Promise.resolve(dependencies.onJobCreated?.(job.id)).catch(() => {
           console.error("inline generation failed");
@@ -80,6 +100,8 @@ export async function POST(request: Request) {
   return createGenerationJobsRoute({
     db,
     onJobCreated: () => localGenerationTrigger?.(),
+    now: () => new Date(),
+    dailyGenerationLimit: Math.min(20, Math.max(1, Number(process.env.DAILY_CASE_LIMIT ?? 3))),
     resolveSessionId: async (incoming) => {
       const cookie = readCookie(incoming, "wy_session");
       if (!cookie) throw new Error("INVALID_SESSION");

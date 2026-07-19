@@ -57,6 +57,26 @@ describe("GenerationJobRepository", () => {
     expect(second.id).toBe(first.id);
   });
 
+  it("creates at most three jobs per Shanghai day and preserves idempotent replay", async () => {
+    const since = new Date("2026-07-18T16:00:00.000Z");
+    const inputs = await Promise.all([0, 1, 2, 3].map(async (index) => ({
+      sessionId,
+      imageAssetId: await testDatabase.seedImageAsset(sessionId, `quota-photo-${index}`),
+      imageSha256: `quota-photo-${index}`,
+      idempotencyKey: `quota-${index}`,
+    })));
+
+    const first = await repository.createWithinDailyLimit(inputs[0], since, 3);
+    await repository.createWithinDailyLimit(inputs[1], since, 3);
+    await repository.createWithinDailyLimit(inputs[2], since, 3);
+    const blocked = await repository.createWithinDailyLimit(inputs[3], since, 3);
+    const replay = await repository.createWithinDailyLimit(inputs[0], since, 3);
+
+    expect(first.limited).toBe(false);
+    expect(blocked).toEqual({ job: null, limited: true });
+    expect(replay.job?.id).toBe(first.job?.id);
+  });
+
   it("does not move a terminal job backwards", async () => {
     const job = await repository.createGenerationJob({
       sessionId,

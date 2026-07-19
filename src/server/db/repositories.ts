@@ -1,9 +1,9 @@
-import { and, asc, eq, isNull, lt, or } from "drizzle-orm";
+import { and, asc, count, eq, gte, isNull, lt, or } from "drizzle-orm";
 
 import { toPlayerCase, type JobStatus, type PrivateCase } from "@/server/cases/contracts";
 
 import type { AppDatabase } from "./client";
-import { answerAttempts, cases, gameSessions, generationJobs, imageAssets } from "./schema";
+import { anonymousSessions, answerAttempts, cases, gameSessions, generationJobs, imageAssets } from "./schema";
 
 const allowedTransitions: Record<JobStatus, readonly JobStatus[]> = {
   PENDING: ["PROCESSING"],
@@ -24,6 +24,49 @@ type CreateGenerationJobInput = {
 
 export class GenerationJobRepository {
   constructor(private readonly db: AppDatabase) {}
+
+  async createWithinDailyLimit(
+    input: CreateGenerationJobInput,
+    since: Date,
+    limit: number,
+  ) {
+    return this.db.transaction(async (transaction) => {
+      await transaction
+        .select({ id: anonymousSessions.id })
+        .from(anonymousSessions)
+        .where(eq(anonymousSessions.id, input.sessionId))
+        .limit(1)
+        .for("update");
+
+      const [existing] = await transaction
+        .select()
+        .from(generationJobs)
+        .where(
+          and(
+            eq(generationJobs.sessionId, input.sessionId),
+            eq(generationJobs.imageSha256, input.imageSha256),
+            eq(generationJobs.idempotencyKey, input.idempotencyKey),
+          ),
+        )
+        .limit(1);
+      if (existing) return { job: existing, limited: false };
+
+      const [usage] = await transaction
+        .select({ value: count() })
+        .from(generationJobs)
+        .where(
+          and(
+            eq(generationJobs.sessionId, input.sessionId),
+            gte(generationJobs.createdAt, since),
+          ),
+        );
+      if (Number(usage?.value ?? 0) >= limit) return { job: null, limited: true };
+
+      const [job] = await transaction.insert(generationJobs).values(input).returning();
+      if (!job) throw new Error("JOB_CREATE_FAILED");
+      return { job, limited: false };
+    });
+  }
 
   async createGenerationJob(input: CreateGenerationJobInput) {
     const [created] = await this.db
