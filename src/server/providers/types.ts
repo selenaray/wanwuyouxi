@@ -1,5 +1,5 @@
 import type { GeneratedCase, PrivateCase } from "@/server/cases/contracts";
-import type { VisionObservation } from "@/server/cases/v2-contracts";
+import type { V2PrivateCase, VisionObservation } from "@/server/cases/v2-contracts";
 
 export type ValidationIssue = {
   code: "NON_UNIQUE" | "CONTRADICTION" | "OUTSIDE_EVIDENCE" | "UNSAFE" | "COPY_QUALITY";
@@ -31,6 +31,25 @@ export interface VisionObservationProvider {
     locale: "zh-CN";
     traceId: string;
   }): Promise<VisionObservation>;
+}
+
+export interface CaseFactbookCompiler {
+  compileCase(input: {
+    observation: Extract<VisionObservation, { decision: "PASS" }>;
+    traceId: string;
+  }): Promise<V2PrivateCase>;
+  repairCase(input: {
+    game: V2PrivateCase;
+    issues: ValidationIssue[];
+    traceId: string;
+  }): Promise<V2PrivateCase>;
+}
+
+export interface CaseFactbookJudge {
+  validateCase(input: {
+    game: V2PrivateCase;
+    traceId: string;
+  }): Promise<SemanticValidation>;
 }
 
 export interface CaseJudgeProvider {
