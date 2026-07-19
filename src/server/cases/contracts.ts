@@ -37,9 +37,9 @@ export const PrivateCaseSchema = z.object({
   clues: z.tuple([ClueSchema, ClueSchema, ClueSchema]),
   question: z.string().min(6).max(80),
   answerOptions: z.tuple([
-    z.string().min(2).max(40),
-    z.string().min(2).max(40),
-    z.string().min(2).max(40),
+    z.string().trim().min(1).max(40),
+    z.string().trim().min(1).max(40),
+    z.string().trim().min(1).max(40),
   ]),
   correctAnswerIndex: z.union([z.literal(0), z.literal(1), z.literal(2)]),
   wrongAnswerHint: z.string().min(4).max(80),

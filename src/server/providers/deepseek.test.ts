@@ -54,4 +54,22 @@ describe("DeepSeekCaseJudge", () => {
 
     expect(result.wrongAnswerHint).toBe(repaired.wrongAnswerHint);
   });
+
+  it("accepts a targeted repair with single-character answer choices", async () => {
+    const judge = new DeepSeekCaseJudge({
+      transport: new CapturingTransport([
+        JSON.stringify({ changes: { answerOptions: ["甲", "乙", "丙"] } }),
+      ]),
+      model: "deepseek-v4-flash",
+      timeoutMs: 30_000,
+    });
+
+    const repaired = await judge.repairCase({
+      game: fakePrivateCase,
+      issues: [{ code: "COPY_QUALITY", field: "answerOptions", message: "short choices" }],
+      traceId: "trace",
+    });
+
+    expect(repaired.answerOptions).toEqual(["甲", "乙", "丙"]);
+  });
 });

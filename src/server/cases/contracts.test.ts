@@ -58,6 +58,24 @@ describe("GeneratedCaseSchema", () => {
     expect(GeneratedCaseSchema.parse(valid).game?.clues).toHaveLength(3);
   });
 
+  it("accepts non-empty single-character Chinese answer options", () => {
+    const singleCharacterAnswers = {
+      ...valid,
+      game: { ...valid.game, answerOptions: ["甲", "乙", "丙"] },
+    };
+
+    expect(GeneratedCaseSchema.safeParse(singleCharacterAnswers).success).toBe(true);
+  });
+
+  it("still rejects an empty answer option", () => {
+    const emptyAnswer = {
+      ...valid,
+      game: { ...valid.game, answerOptions: ["", "乙", "丙"] },
+    };
+
+    expect(GeneratedCaseSchema.safeParse(emptyAnswer).success).toBe(false);
+  });
+
   it("rejects a case with fewer than three clues", () => {
     const invalid = {
       ...valid,
@@ -75,4 +93,3 @@ describe("GeneratedCaseSchema", () => {
     expect(player.clues).toHaveLength(3);
   });
 });
-

@@ -178,6 +178,28 @@ describe("QwenVisionProvider", () => {
     expect(result.game.clues[1]).toMatchObject({ radius: 0.12, confidence: 0.75 });
   });
 
+  it("accepts a PASS result whose answer choices are single Chinese characters", async () => {
+    const response = JSON.stringify({
+      ...JSON.parse(validResponse),
+      game: { ...fakePrivateCase, answerOptions: ["甲", "乙", "丙"] },
+    });
+    const provider = new QwenVisionProvider({
+      transport: new CapturingTransport(response),
+      model: "qwen3-vl-plus",
+      timeoutMs: 30_000,
+    });
+
+    const result = await provider.generateCase({
+      imageUrl: "data:image/jpeg;base64,/9j/",
+      imageWidth: 1200,
+      imageHeight: 900,
+      locale: "zh-CN",
+      traceId: "trace",
+    });
+
+    expect(result.decision).toBe("PASS");
+  });
+
   it("logs only schema paths when normalized output remains invalid", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const provider = new QwenVisionProvider({

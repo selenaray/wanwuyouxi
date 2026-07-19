@@ -53,9 +53,9 @@ const RepairChangesSchema = z.object({
     objective: z.string().min(6).max(80).optional(),
     question: z.string().min(6).max(80).optional(),
     answerOptions: z.tuple([
-      z.string().min(2).max(40),
-      z.string().min(2).max(40),
-      z.string().min(2).max(40),
+      z.string().trim().min(1).max(40),
+      z.string().trim().min(1).max(40),
+      z.string().trim().min(1).max(40),
     ]).optional(),
     wrongAnswerHint: z.string().min(4).max(80).optional(),
     truth: z.string().min(12).max(240).optional(),
@@ -169,4 +169,3 @@ export function createDeepSeekCaseJudgeFromEnv() {
     timeoutMs: Number(process.env.GENERATION_TIMEOUT_MS ?? 30_000),
   });
 }
-
