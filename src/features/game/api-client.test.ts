@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createClientRequestId,
   createGenerationJob,
   createSession,
   deleteImage,
@@ -23,6 +24,14 @@ describe("game API client", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it("creates a request UUID when randomUUID is unavailable on LAN HTTP", () => {
+    const insecureLanCrypto = {
+      getRandomValues: (bytes: Uint8Array) => bytes.fill(0),
+    };
+
+    expect(createClientRequestId(insecureLanCrypto)).toBe("00000000-0000-4000-8000-000000000000");
   });
 
   it("waits long enough for a successful 100-second retried generation", async () => {

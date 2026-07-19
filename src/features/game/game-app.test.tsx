@@ -43,6 +43,16 @@ describe("GameApp", () => {
     expect(screen.getByRole("button", { name: "使用这张照片" })).toBeInTheDocument();
   });
 
+  it("accepts an iPhone HEIF photo for preview", () => {
+    renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "开始扫描现场" }));
+    const file = new File(["room"], "room.heif", { type: "image/heif" });
+    fireEvent.change(screen.getByLabelText("选择现场照片"), { target: { files: [file] } });
+
+    expect(screen.getByText("room.heif")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "使用这张照片" })).toBeInTheDocument();
+  });
+
   it("collects three clues and reveals the truth after a correct answer", () => {
     reachBriefing();
     fireEvent.click(screen.getByRole("button", { name: "进入现场" }));

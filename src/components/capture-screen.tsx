@@ -52,7 +52,7 @@ export function CaptureScreen({ imageUrl, imageName, onSelect, onConfirm, onBack
       <div className="action-stack compact">
         <label className="secondary-button file-button">
           <span>{imageUrl ? "重新选择" : "选择现场照片"}</span>
-          <input aria-label="选择现场照片" type="file" accept="image/jpeg,image/png,image/heic" onChange={handleChange} />
+          <input aria-label="选择现场照片" type="file" accept="image/jpeg,image/png,image/heic,image/heif" onChange={handleChange} />
         </label>
         {imageUrl && <button className="primary-button" type="button" onClick={onConfirm}>使用这张照片 <span aria-hidden="true">↗</span></button>}
       </div>

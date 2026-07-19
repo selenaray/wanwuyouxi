@@ -15,6 +15,7 @@ import { ScanningScreen } from "@/components/scanning-screen";
 
 import { createInitialState, transitionGame } from "./game-machine";
 import {
+  createClientRequestId,
   createGenerationJob,
   createSession,
   deleteImage,
@@ -29,7 +30,7 @@ import { SAMPLE_IMAGE_URL } from "./mock-case";
 import { loadGameState, saveGameState } from "./persistence";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/heic"];
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif"];
 
 export function GameApp() {
   const [state, dispatch] = useReducer(transitionGame, undefined, createInitialState);
@@ -91,7 +92,7 @@ export function GameApp() {
           await createSession();
           const prepared = await prepareImageForUpload(selectedFile!);
           const uploaded = await uploadImage(prepared);
-          const job = await createGenerationJob(uploaded.imageId, crypto.randomUUID());
+          const job = await createGenerationJob(uploaded.imageId, createClientRequestId());
           jobId = job.jobId;
           resumableJobId.current = jobId;
           if (!cancelled) dispatch({ type: "GENERATION_STARTED", imageId: uploaded.imageId, jobId });
@@ -124,7 +125,7 @@ export function GameApp() {
 
   const selectFile = (file: File) => {
     if (!ALLOWED_TYPES.includes(file.type)) {
-      setFileError("目前只支持 JPEG、PNG 或 HEIC 图片");
+      setFileError("目前只支持 JPEG、PNG、HEIC 或 HEIF 图片");
       return;
     }
     if (file.size > MAX_FILE_BYTES) {
