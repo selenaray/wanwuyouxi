@@ -19,6 +19,7 @@ import {
   createGenerationJob,
   createSession,
   deleteImage,
+  GameApiError,
   getPlayerCase,
   revealCase,
   submitAnswer,
@@ -79,7 +80,7 @@ export function GameApp() {
     }
     if (state.mode !== "live" || generationRunning.current) return;
     if (!selectedFile && !resumableJobId.current) {
-      dispatch({ type: "SCAN_FAILED" });
+      dispatch({ type: "SCAN_FAILED", errorCode: "PHOTO_UNAVAILABLE" });
       return;
     }
 
@@ -100,14 +101,23 @@ export function GameApp() {
 
         const completedJob = await waitForGenerationJob(jobId);
         if (completedJob.status !== "SUCCEEDED" || !completedJob.caseId) {
-          throw new Error(completedJob.status);
+          throw new GameApiError(
+            completedJob.errorCode ?? completedJob.status,
+            "现场重建未完成",
+            completedJob.status === "RETRYABLE_FAILED",
+          );
         }
         const player = await getPlayerCase(completedJob.caseId);
         if (!cancelled) {
           dispatch({ type: "GENERATION_SUCCEEDED", caseId: completedJob.caseId, caseData: player.case });
         }
-      } catch {
-        if (!cancelled) dispatch({ type: "SCAN_FAILED" });
+      } catch (error) {
+        if (!cancelled) {
+          dispatch({
+            type: "SCAN_FAILED",
+            errorCode: error instanceof GameApiError ? error.code : "GENERATION_FAILED",
+          });
+        }
       } finally {
         generationRunning.current = false;
       }
@@ -120,7 +130,7 @@ export function GameApp() {
     if (!hydrated || state.mode !== "live" || !state.caseId || state.caseData) return;
     void getPlayerCase(state.caseId)
       .then((player) => dispatch({ type: "GENERATION_SUCCEEDED", caseId: state.caseId!, caseData: player.case }))
-      .catch(() => dispatch({ type: "SCAN_FAILED" }));
+      .catch(() => dispatch({ type: "SCAN_FAILED", errorCode: "GENERATION_FAILED" }));
   }, [hydrated, state.caseData, state.caseId, state.mode]);
 
   const selectFile = (file: File) => {
@@ -238,7 +248,15 @@ export function GameApp() {
       {state.screen === "result" && state.caseData && state.truth && (
         <ResultScreen game={state.caseData} truth={state.truth} firstAnswerCorrect={state.firstAnswerCorrect} elapsedSeconds={elapsedSeconds} onReplay={replay} />
       )}
-      {state.screen === "error" && <ErrorScreen onRetry={() => dispatch({ type: "RETRY_SCAN" })} />}
+      {state.screen === "error" && (
+        <ErrorScreen
+          errorCode={state.errorCode}
+          onRetry={() => {
+            resumableJobId.current = null;
+            dispatch({ type: "RETRY_SCAN" });
+          }}
+        />
+      )}
       {privacyOpen && <PrivacySheet onClose={() => setPrivacyOpen(false)} />}
     </PhoneShell>
   );

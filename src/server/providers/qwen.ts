@@ -8,6 +8,7 @@ import { ProviderError, type VisionCaseProvider } from "./types";
 export type QwenRequest = {
   model: string;
   enable_thinking: false;
+  max_tokens: number;
   response_format: { type: "json_object" };
   messages: Array<{
     role: "system" | "user";
@@ -105,6 +106,7 @@ export class QwenVisionProvider implements VisionCaseProvider {
     const request: QwenRequest = {
       model: this.options.model,
       enable_thinking: false,
+      max_tokens: 4096,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: QWEN_CASE_SYSTEM_PROMPT },

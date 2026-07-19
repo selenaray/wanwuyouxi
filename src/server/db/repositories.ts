@@ -56,7 +56,7 @@ export class GenerationJobRepository {
     return existing;
   }
 
-  async transitionJob(id: string, nextStatus: JobStatus) {
+  async transitionJob(id: string, nextStatus: JobStatus, errorCode?: string | null) {
     const [current] = await this.db
       .select({ status: generationJobs.status })
       .from(generationJobs)
@@ -70,7 +70,11 @@ export class GenerationJobRepository {
 
     const [updated] = await this.db
       .update(generationJobs)
-      .set({ status: nextStatus, updatedAt: new Date() })
+      .set({
+        status: nextStatus,
+        updatedAt: new Date(),
+        ...(errorCode !== undefined ? { errorCode } : {}),
+      })
       .where(and(eq(generationJobs.id, id), eq(generationJobs.status, current.status)))
       .returning();
 
@@ -133,6 +137,7 @@ export class GenerationJobRepository {
           leaseOwner: workerId,
           leaseExpiresAt,
           attemptCount: candidate.attemptCount + 1,
+          errorCode: null,
           updatedAt: now,
         })
         .where(eq(generationJobs.id, candidate.id))

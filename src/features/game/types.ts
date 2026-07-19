@@ -21,7 +21,7 @@ export type GameState = {
   firstAnswerCorrect: boolean | null;
   startedAt: number | null;
   revealedAt: number | null;
-  errorCode: "GENERATION_FAILED" | null;
+  errorCode: string | null;
   mode: "sample" | "live" | null;
   imageId: string | null;
   jobId: string | null;
@@ -37,7 +37,7 @@ export type GameEvent =
   | { type: "SELECT_IMAGE"; imageUrl: string; imageName: string }
   | { type: "CONFIRM_IMAGE" }
   | { type: "SCAN_COMPLETE" }
-  | { type: "SCAN_FAILED" }
+  | { type: "SCAN_FAILED"; errorCode: string }
   | { type: "GENERATION_STARTED"; imageId: string; jobId: string }
   | { type: "GENERATION_SUCCEEDED"; caseId: string; caseData: PlayerCase }
   | { type: "RETRY_SCAN" }

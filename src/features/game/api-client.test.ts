@@ -72,7 +72,12 @@ describe("game API client", () => {
       .mockResolvedValueOnce(apiResponse({ correct: false, attemptCount: 1, completed: false, hint: "再想想" }));
     vi.stubGlobal("fetch", fetchMock);
 
-    expect(await getGenerationJob("job")).toEqual({ jobId: "job", status: "SUCCEEDED", caseId: "case" });
+    expect(await getGenerationJob("job")).toEqual({
+      jobId: "job",
+      status: "SUCCEEDED",
+      caseId: "case",
+      errorCode: null,
+    });
     expect(await submitAnswer("case", 0)).toMatchObject({ correct: false, hint: "再想想" });
   });
 
@@ -81,9 +86,13 @@ describe("game API client", () => {
       jobId: "job",
       status: "RETRYABLE_FAILED",
       caseId: null,
+      errorCode: "QWEN_SCHEMA_INVALID",
     })));
 
-    await expect(getGenerationJob("job")).resolves.toMatchObject({ status: "RETRYABLE_FAILED" });
+    await expect(getGenerationJob("job")).resolves.toMatchObject({
+      status: "RETRYABLE_FAILED",
+      errorCode: "QWEN_SCHEMA_INVALID",
+    });
   });
 
   it("sends a multipart upload and supports reveal and deletion", async () => {

@@ -42,6 +42,7 @@ describe("QwenVisionProvider", () => {
     expect(transport.lastRequest).toMatchObject({
       model: "qwen3-vl-plus",
       enable_thinking: false,
+      max_tokens: 4096,
       response_format: { type: "json_object" },
     });
     const serialized = JSON.stringify(transport.lastRequest);

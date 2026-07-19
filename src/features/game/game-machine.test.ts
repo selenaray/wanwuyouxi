@@ -114,4 +114,19 @@ describe("game state machine", () => {
 
     expect(transitionGame(createInitialState(), { type: "HYDRATE", state: persisted })).toEqual(persisted);
   });
+
+  it("keeps the real generation error and clears a failed job before retrying", () => {
+    const failed = transitionGame(
+      { ...createInitialState(), mode: "live", jobId: "failed-job" },
+      { type: "SCAN_FAILED", errorCode: "QWEN_SCHEMA_INVALID" },
+    );
+
+    expect(failed.errorCode).toBe("QWEN_SCHEMA_INVALID");
+    expect(transitionGame(failed, { type: "RETRY_SCAN" })).toMatchObject({
+      screen: "capture",
+      jobId: null,
+      imageId: null,
+      errorCode: null,
+    });
+  });
 });

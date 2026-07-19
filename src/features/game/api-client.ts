@@ -98,10 +98,15 @@ export function createGenerationJob(imageId: string, idempotencyKey: string) {
 }
 
 export function getGenerationJob(jobId: string) {
-  return request<{ jobId: string; status: string; caseId: string | null }>(
+  return request<{ jobId: string; status: string; caseId: string | null; errorCode: string | null }>(
     `/api/generation-jobs/${encodeURIComponent(jobId)}`,
     { method: "GET" },
-    z.object({ jobId: z.string(), status: z.enum(["PENDING", "PROCESSING", "VALIDATING", "RETRYABLE_FAILED", "SUCCEEDED", "REJECTED", "FAILED"]), caseId: z.string().nullable() }),
+    z.object({
+      jobId: z.string(),
+      status: z.enum(["PENDING", "PROCESSING", "VALIDATING", "RETRYABLE_FAILED", "SUCCEEDED", "REJECTED", "FAILED"]),
+      caseId: z.string().nullable(),
+      errorCode: z.string().nullable().default(null),
+    }),
   );
 }
 

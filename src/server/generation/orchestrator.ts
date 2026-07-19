@@ -12,6 +12,15 @@ type GenerationDependencies = {
   judge: CaseJudgeProvider;
 };
 
+function generationErrorCode(error: unknown) {
+  if (error instanceof ProviderError) {
+    return /^[A-Z0-9_]{1,80}$/.test(error.message)
+      ? error.message
+      : `PROVIDER_${error.code}`;
+  }
+  return "GENERATION_FAILED";
+}
+
 export async function runGenerationJob(jobId: string, dependencies: GenerationDependencies) {
   const job = await dependencies.jobs.getJobWithImage(jobId);
   if (!job) throw new Error("JOB_NOT_FOUND");
@@ -29,7 +38,7 @@ export async function runGenerationJob(jobId: string, dependencies: GenerationDe
     });
 
     if (generated.decision !== "PASS") {
-      await dependencies.jobs.transitionJob(job.id, "REJECTED");
+      await dependencies.jobs.transitionJob(job.id, "REJECTED", generated.reasonCode);
       return;
     }
 
@@ -88,7 +97,7 @@ export async function runGenerationJob(jobId: string, dependencies: GenerationDe
   } catch (error) {
     const latest = await dependencies.jobs.getJob(job.id);
     if (latest?.status === "PROCESSING" || latest?.status === "VALIDATING") {
-      await dependencies.jobs.transitionJob(job.id, "RETRYABLE_FAILED");
+      await dependencies.jobs.transitionJob(job.id, "RETRYABLE_FAILED", generationErrorCode(error));
       if (latest.attemptCount < 2) {
         await dependencies.jobs.transitionJob(job.id, "PENDING");
       }

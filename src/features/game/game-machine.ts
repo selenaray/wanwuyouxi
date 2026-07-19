@@ -60,7 +60,7 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
     case "SCAN_COMPLETE":
       return state.screen === "scanning" ? { ...state, screen: "briefing" } : state;
     case "SCAN_FAILED":
-      return { ...state, screen: "error", errorCode: "GENERATION_FAILED" };
+      return { ...state, screen: "error", errorCode: event.errorCode };
     case "GENERATION_STARTED":
       return { ...state, imageId: event.imageId, jobId: event.jobId };
     case "GENERATION_SUCCEEDED":
@@ -72,7 +72,14 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         errorCode: null,
       };
     case "RETRY_SCAN":
-      return state.selectedImageUrl ? { ...state, screen: "scanning", errorCode: null } : state;
+      return {
+        ...state,
+        screen: state.selectedImageUrl ? "scanning" : "capture",
+        imageId: null,
+        jobId: null,
+        caseId: null,
+        errorCode: null,
+      };
     case "ENTER_SCENE":
       return state.screen === "briefing"
         ? { ...state, screen: "exploring", startedAt: event.now }

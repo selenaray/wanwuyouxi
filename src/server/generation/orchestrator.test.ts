@@ -134,7 +134,7 @@ describe("runGenerationJob", () => {
       storage: { createReadUrl: async () => "data:image/jpeg;base64,/9j/", put: async () => ({ key: "unused" }), delete: async () => undefined },
       vision: {
         async generateCase(): Promise<never> {
-          throw new ProviderError("UNAVAILABLE", "temporary");
+          throw new ProviderError("UNAVAILABLE", "QWEN_UNAVAILABLE");
         },
       },
       judge: new FakeCaseJudgeProvider(),
@@ -148,5 +148,6 @@ describe("runGenerationJob", () => {
     await expect(runGenerationJob(job.id, dependencies)).rejects.toMatchObject({ code: "UNAVAILABLE" });
     expect((await jobs.getJob(job.id))?.status).toBe("RETRYABLE_FAILED");
     expect((await jobs.getJob(job.id))?.attemptCount).toBe(2);
+    expect((await jobs.getJob(job.id))?.errorCode).toBe("QWEN_UNAVAILABLE");
   });
 });
