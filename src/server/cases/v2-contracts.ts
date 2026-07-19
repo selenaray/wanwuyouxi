@@ -91,6 +91,40 @@ export const PrivateSuspectSchema = z
   })
   .strict();
 
+const EvidenceTupleSchema = z
+  .tuple([EvidenceSchema, EvidenceSchema, EvidenceSchema])
+  .superRefine((evidence, context) => {
+    const seenIds = new Set<string>();
+
+    evidence.forEach((item, index) => {
+      if (seenIds.has(item.id)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Evidence IDs must be unique",
+          path: [index, "id"],
+        });
+      }
+      seenIds.add(item.id);
+    });
+  });
+
+const SuspectTupleSchema = z
+  .tuple([PrivateSuspectSchema, PrivateSuspectSchema, PrivateSuspectSchema])
+  .superRefine((suspects, context) => {
+    const seenIds = new Set<string>();
+
+    suspects.forEach((item, index) => {
+      if (seenIds.has(item.id)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Suspect IDs must be unique",
+          path: [index, "id"],
+        });
+      }
+      seenIds.add(item.id);
+    });
+  });
+
 const TimelineFactSchema = z
   .object({
     id: StableIdSchema,
@@ -118,12 +152,8 @@ export const V2PrivateCaseSchema = z
     objective: z.string().min(6).max(100),
     interactionMode: z.enum(["HOTSPOT", "CARD_FALLBACK"]),
     visualFacts: z.array(VisualFactSchema).min(3).max(8),
-    evidence: z.tuple([EvidenceSchema, EvidenceSchema, EvidenceSchema]),
-    suspects: z.tuple([
-      PrivateSuspectSchema,
-      PrivateSuspectSchema,
-      PrivateSuspectSchema,
-    ]),
+    evidence: EvidenceTupleSchema,
+    suspects: SuspectTupleSchema,
     timelineFacts: z.array(TimelineFactSchema).min(3).max(8),
     claims: z.tuple([ClaimSchema, ClaimSchema, ClaimSchema]),
     liarSuspectId: StableIdSchema,

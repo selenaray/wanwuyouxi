@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { GeneratedCaseSchema, toPlayerCase } from "./contracts";
+import {
+  GeneratedCaseSchema,
+  PrivatePayloadSchema,
+  toPlayerCase,
+  toPlayerPayload,
+} from "./contracts";
+import { validV2Case } from "./v2-contracts.fixture";
 
 const valid = {
   decision: "PASS",
@@ -91,5 +97,31 @@ describe("GeneratedCaseSchema", () => {
     expect(player).not.toHaveProperty("correctAnswerIndex");
     expect(player).not.toHaveProperty("truth");
     expect(player.clues).toHaveLength(3);
+  });
+
+  it("parses and projects the unchanged V1 private payload", () => {
+    const privatePayload = PrivatePayloadSchema.parse(valid.game);
+    const player = toPlayerPayload(privatePayload);
+
+    expect(player).toEqual(toPlayerCase(valid.game));
+    expect(player).not.toHaveProperty("version");
+  });
+
+  it("parses and projects V2 without private fields", () => {
+    const player = toPlayerPayload(PrivatePayloadSchema.parse(validV2Case));
+
+    expect(player).toHaveProperty("version", 2);
+    expect(player).not.toHaveProperty("liarSuspectId");
+    expect(player).not.toHaveProperty("truth");
+    expect(player).not.toHaveProperty("visualFacts");
+    expect(player).not.toHaveProperty("contradiction");
+    for (const suspect of player.suspects) {
+      expect(suspect).not.toHaveProperty("privateAction");
+      expect(suspect).not.toHaveProperty("allowedFactIds");
+    }
+    for (const claim of player.claims) {
+      expect(claim).not.toHaveProperty("factRefs");
+      expect(claim).not.toHaveProperty("evidenceRefs");
+    }
   });
 });
