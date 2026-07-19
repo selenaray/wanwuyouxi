@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { findSessionByCookie } from "@/server/auth/session";
+import { readRuntimeLimits } from "@/server/config/production";
 import type { AppDatabase } from "@/server/db/client";
 import { GenerationJobRepository } from "@/server/db/repositories";
 import { getRuntimeDatabase } from "@/server/db/runtime";
@@ -101,7 +102,7 @@ export async function POST(request: Request) {
     db,
     onJobCreated: () => localGenerationTrigger?.(),
     now: () => new Date(),
-    dailyGenerationLimit: Math.min(20, Math.max(1, Number(process.env.DAILY_CASE_LIMIT ?? 3))),
+    dailyGenerationLimit: readRuntimeLimits(process.env).dailyGenerationLimit,
     resolveSessionId: async (incoming) => {
       const cookie = readCookie(incoming, "wy_session");
       if (!cookie) throw new Error("INVALID_SESSION");

@@ -3,5 +3,6 @@
 .data
 node_modules
 test-results
-.env.local
-deploy/.env.production
+.env*
+!.env.example
+!deploy/.env.production.example

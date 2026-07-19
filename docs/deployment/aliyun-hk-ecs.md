@@ -49,14 +49,30 @@ docker compose -f deploy/compose.yml --env-file deploy/.env.production logs --ta
 
 ## 5. 备份
 
-每次更新前先备份持久化数据库卷：
+每次更新前先备份持久化数据库卷。PGlite 是文件数据库，打包时必须暂停应用写入；低流量作品集会有短暂维护窗口：
 
 ```bash
 mkdir -p backups
+docker compose -f deploy/compose.yml --env-file deploy/.env.production stop app
 docker run --rm -v wanwuyouxi-data:/data -v "$PWD/backups:/backup" alpine sh -c 'tar czf /backup/pglite-$(date +%Y%m%d-%H%M%S).tgz -C /data .'
+docker compose -f deploy/compose.yml --env-file deploy/.env.production start app
+curl -fsS "https://你的域名/api/health"
 ```
 
-把备份复制到 ECS 以外的安全位置。备份包含游戏数据，不包含 OSS 中的原始照片。
+如果打包命令失败，也要先重新启动应用并排查原因。把备份复制到 ECS 以外的安全位置。备份包含游戏数据，不包含 OSS 中的原始照片。
+
+### 恢复并验证备份
+
+恢复会覆盖当前数据库。先按上面的步骤备份当前卷，再指定要恢复的文件：
+
+```bash
+docker compose -f deploy/compose.yml --env-file deploy/.env.production stop app
+docker run --rm -v wanwuyouxi-data:/data -v "$PWD/backups:/backup:ro" alpine sh -c 'find /data -mindepth 1 -delete && tar xzf /backup/你的备份文件.tgz -C /data'
+docker compose -f deploy/compose.yml --env-file deploy/.env.production start app
+curl -fsS "https://你的域名/api/health"
+```
+
+健康接口返回 `{"ok":true}` 后，再打开一个已有案件和示例案件确认读取正常。重要版本上线前，应在测试服务器或临时 Docker volume 中实际恢复一次最近备份，不能只确认压缩包存在。
 
 ## 6. 更新
 

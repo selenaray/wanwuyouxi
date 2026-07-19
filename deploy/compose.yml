@@ -29,7 +29,7 @@ services:
       app:
         condition: service_healthy
     environment:
-      APP_DOMAIN: ${APP_DOMAIN}
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN is required}
     ports:
       - "80:80"
       - "443:443"
