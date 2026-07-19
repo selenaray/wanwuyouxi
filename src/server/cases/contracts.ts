@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+import {
+  V2PrivateCaseSchema,
+  toV2PlayerCase,
+  type V2PlayerCase,
+  type V2PrivateCase,
+} from "./v2-contracts";
+
 export const JobStatusSchema = z.enum([
   "PENDING",
   "PROCESSING",
@@ -48,6 +55,9 @@ export const PrivateCaseSchema = z.object({
 
 export type PrivateCase = z.infer<typeof PrivateCaseSchema>;
 export type PlayerCase = Omit<PrivateCase, "correctAnswerIndex" | "truth">;
+export const PrivatePayloadSchema = z.union([PrivateCaseSchema, V2PrivateCaseSchema]);
+export type PrivatePayload = PrivateCase | V2PrivateCase;
+export type PlayerPayload = PlayerCase | V2PlayerCase;
 
 const PassResultSchema = z.object({
   decision: z.literal("PASS"),
@@ -90,4 +100,12 @@ export function toPlayerCase(value: PrivateCase): PlayerCase {
     answerOptions: value.answerOptions,
     wrongAnswerHint: value.wrongAnswerHint,
   };
+}
+
+export function toPlayerPayload(value: PrivatePayload): PlayerPayload {
+  if ("version" in value && value.version === 2) {
+    return toV2PlayerCase(value);
+  }
+
+  return toPlayerCase(value as PrivateCase);
 }
