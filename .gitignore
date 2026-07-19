@@ -8,4 +8,5 @@ playwright-report/
 test-results/
 .data/
 .env.local
+deploy/.env.production
 *.log

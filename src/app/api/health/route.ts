@@ -14,9 +14,13 @@ export function createHealthRoute(checkDatabase: () => Promise<void>) {
   };
 }
 
-export async function GET() {
-  const { db } = await getRuntimeDatabase();
+export function createRuntimeHealthRoute(
+  loadDatabase: typeof getRuntimeDatabase = getRuntimeDatabase,
+) {
   return createHealthRoute(async () => {
+    const { db } = await loadDatabase();
     await db.execute(sql`select 1`);
-  })();
+  });
 }
+
+export const GET = createRuntimeHealthRoute();

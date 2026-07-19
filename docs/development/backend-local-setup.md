@@ -34,7 +34,7 @@ DEEPSEEK_API_KEY=
 
 留空两个 Key 就是无额度演示；真实模式请把 Key 粘贴在等号后。`.env.local` 已被 Git 忽略，仍不要把它复制进文档或聊天。
 
-本地开发默认使用 `.data/pglite` 数据库和 `.data/uploads` 私有图片目录，无需安装 PostgreSQL。生产部署目标为中国大陆可用的阿里云 RDS PostgreSQL 与私有 OSS；部署前需要接入生产数据库驱动并执行 `drizzle/` 中的迁移，不能直接使用本地 PGlite 文件。
+本地开发默认使用 `.data/pglite` 数据库和 `.data/uploads` 私有图片目录，无需安装 PostgreSQL。作品集低流量阶段也使用 PGlite，但只能运行一个应用实例，并必须把 `.data` 挂载到持久化云盘卷；照片使用私有 OSS。需要多副本或更高可用性时，先迁移到阿里云 RDS PostgreSQL，再进行横向扩容。正式上线步骤见 [阿里云香港 ECS 上线指南](../deployment/aliyun-hk-ecs.md)。
 
 ## 3. 启动完整流程
 

@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { createHealthRoute } from "./route";
+import { createHealthRoute, createRuntimeHealthRoute } from "./route";
 
 describe("GET /api/health", () => {
   it("returns 200 when the database is available", async () => {
@@ -19,5 +19,15 @@ describe("GET /api/health", () => {
     expect(response.status).toBe(503);
     expect(text).toContain('"ok":false');
     expect(text).not.toContain("private database path");
+  });
+
+  it("also sanitizes database initialization failures", async () => {
+    const response = await createRuntimeHealthRoute(async () => {
+      throw new Error("private migration path");
+    })();
+    const text = await response.text();
+
+    expect(response.status).toBe(503);
+    expect(text).not.toContain("private migration path");
   });
 });
