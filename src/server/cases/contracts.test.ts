@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   GeneratedCaseSchema,
+  PrivateCaseSchema,
   PrivatePayloadSchema,
   toPlayerCase,
   toPlayerPayload,
@@ -100,10 +101,11 @@ describe("GeneratedCaseSchema", () => {
   });
 
   it("parses and projects the unchanged V1 private payload", () => {
-    const privatePayload = PrivatePayloadSchema.parse(valid.game);
+    const privateCase = PrivateCaseSchema.parse(valid.game);
+    const privatePayload = PrivatePayloadSchema.parse(privateCase);
     const player = toPlayerPayload(privatePayload);
 
-    expect(player).toEqual(toPlayerCase(valid.game));
+    expect(player).toEqual(toPlayerCase(privateCase));
     expect(player).not.toHaveProperty("version");
   });
 
@@ -115,6 +117,9 @@ describe("GeneratedCaseSchema", () => {
     expect(player).not.toHaveProperty("truth");
     expect(player).not.toHaveProperty("visualFacts");
     expect(player).not.toHaveProperty("contradiction");
+    if (!("version" in player && player.version === 2)) {
+      throw new Error("expected a V2 player payload");
+    }
     for (const suspect of player.suspects) {
       expect(suspect).not.toHaveProperty("privateAction");
       expect(suspect).not.toHaveProperty("allowedFactIds");
