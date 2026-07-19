@@ -60,15 +60,17 @@ function normalizeNumber(value: unknown) {
 function normalizeUnitInterval(value: unknown) {
   const number = normalizeNumber(value);
   if (typeof number !== "number") return value;
-  const ratio = number > 1 && number <= 100 ? number / 100 : number;
-  return Math.min(1, Math.max(0, ratio));
+  if (number >= 0 && number <= 1) return number;
+  if (number > 1 && number <= 100) return number / 100;
+  return value;
 }
 
 function normalizeRadius(value: unknown) {
   const number = normalizeNumber(value);
   if (typeof number !== "number") return value;
-  const ratio = number > 1 && number <= 100 ? number / 100 : number;
-  return Math.min(0.12, Math.max(0.04, ratio));
+  if (number >= 0.04 && number <= 0.12) return number;
+  if (number >= 4 && number <= 12) return number / 100;
+  return value;
 }
 
 function normalizeObservation(value: unknown): unknown {

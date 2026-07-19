@@ -72,6 +72,34 @@ describe("QwenObservationProvider", () => {
     expect(observation.visualFacts[1]).toMatchObject({ confidence: 0.94, x: 0.51, y: 0.55 });
   });
 
+  it.each([
+    ["x", -1],
+    ["x", 101],
+    ["y", -1],
+    ["y", 101],
+    ["confidence", -1],
+    ["confidence", 101],
+    ["radius", 0.03],
+    ["radius", 0.13],
+  ] as const)("rejects an out-of-range visual fact %s value of %s", async (field, value) => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const response = {
+      ...validObservation,
+      visualFacts: [{ ...validObservation.visualFacts[0], [field]: value }, ...validObservation.visualFacts.slice(1)],
+    };
+    const provider = new QwenObservationProvider({
+      transport: new CapturingTransport(JSON.stringify(response)),
+      model: "qwen3-vl-plus",
+      timeoutMs: 30_000,
+    });
+
+    await expect(provider.observeScene(input)).rejects.toEqual(
+      new ProviderError("BAD_OUTPUT", "QWEN_OBSERVATION_SCHEMA_INVALID"),
+    );
+    expect(JSON.stringify(log.mock.calls)).toContain(`visualFacts.0.${field}`);
+    log.mockRestore();
+  });
+
   it("maps malformed observation output to a schema-invalid provider error", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const provider = new QwenObservationProvider({
