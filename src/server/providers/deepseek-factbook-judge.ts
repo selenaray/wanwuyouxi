@@ -14,21 +14,46 @@ import {
   type SemanticValidation,
 } from "./types";
 
-const SemanticValidationSchema = z.object({
-  valid: z.boolean(),
-  confidence: z.number().min(0).max(1),
-  issues: z.array(z.object({
-    code: z.enum(["NON_UNIQUE", "CONTRADICTION", "OUTSIDE_EVIDENCE", "UNSAFE", "COPY_QUALITY"]),
-    field: z.string().max(80),
-    message: z.string().max(120),
-  }).strict()).max(8),
+const ValidationIssueSchema = z.object({
+  code: z.enum(["NON_UNIQUE", "CONTRADICTION", "OUTSIDE_EVIDENCE", "UNSAFE", "COPY_QUALITY"]),
+  field: z.string().trim().min(1).max(80),
+  message: z.string().trim().min(1).max(120),
 }).strict();
+
+const SemanticValidationSchema = z.discriminatedUnion("valid", [
+  z.object({
+    valid: z.literal(true),
+    confidence: z.number().min(0).max(1),
+    issues: z.array(ValidationIssueSchema).length(0),
+  }).strict(),
+  z.object({
+    valid: z.literal(false),
+    confidence: z.number().min(0).max(1),
+    issues: z.array(ValidationIssueSchema).min(1).max(8),
+  }).strict(),
+]);
 
 type JudgeOptions = {
   transport: DeepSeekTransport;
   model: string;
   timeoutMs: number;
 };
+
+export function publicSemanticV2Case(game: V2PrivateCase) {
+  const semanticCase = semanticV2Case(game);
+  return {
+    ...semanticCase,
+    suspects: game.suspects.map((suspect) => ({
+      id: suspect.id,
+      name: suspect.name,
+      identity: suspect.identity,
+      relation: suspect.relation,
+      personalityTags: suspect.personalityTags,
+      portraitKey: suspect.portraitKey,
+      initialTestimony: suspect.initialTestimony,
+    })),
+  };
+}
 
 export class DeepSeekFactbookJudge implements CaseFactbookJudge {
   constructor(private readonly options: JudgeOptions) {}
@@ -66,7 +91,7 @@ export class DeepSeekFactbookJudge implements CaseFactbookJudge {
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: DEEPSEEK_FACTBOOK_JUDGE_SYSTEM_PROMPT },
-        { role: "user", content: JSON.stringify({ case: semanticV2Case(input.game) }) },
+        { role: "user", content: JSON.stringify({ case: publicSemanticV2Case(input.game) }) },
       ],
     });
     try {

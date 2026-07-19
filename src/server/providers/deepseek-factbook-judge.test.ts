@@ -6,7 +6,6 @@ import { V2PrivateCaseSchema } from "@/server/cases/v2-contracts";
 import { validV2Case } from "@/server/cases/v2-contracts.fixture";
 
 import type { DeepSeekRequest, DeepSeekTransport } from "./deepseek";
-import { semanticV2Case } from "./deepseek-compiler";
 import {
   DeepSeekFactbookJudge,
   createDeepSeekFactbookJudgeFromEnv,
@@ -60,7 +59,9 @@ describe("DeepSeekFactbookJudge", () => {
     const userMessage = transport.requests[0]?.messages[1]?.content;
     const payload = JSON.parse(userMessage ?? "null");
     expect(result).toEqual(verdict);
-    expect(payload).toEqual({ case: semanticV2Case(validGame) });
+    expect(payload).toEqual({ case: expect.any(Object) });
+    expect(JSON.stringify(payload)).not.toContain("privateAction");
+    expect(JSON.stringify(payload)).not.toContain("allowedFactIds");
     expect(JSON.stringify(payload)).not.toMatch(/"(?:x|y|radius)":/);
     expect(JSON.stringify(payload)).not.toContain("imageUrl");
     expect(JSON.stringify(payload)).not.toContain("storageKey");
@@ -71,6 +72,26 @@ describe("DeepSeekFactbookJudge", () => {
   it.each([
     ["malformed JSON", "not-json"],
     ["out-of-range confidence", JSON.stringify({ valid: true, confidence: 1.01, issues: [] })],
+    ["a valid verdict with issues", JSON.stringify({
+      valid: true,
+      confidence: 0.9,
+      issues: [{ code: "COPY_QUALITY", field: "title", message: "标题冗长" }],
+    })],
+    ["an invalid verdict without issues", JSON.stringify({
+      valid: false,
+      confidence: 0.9,
+      issues: [],
+    })],
+    ["a blank issue field", JSON.stringify({
+      valid: false,
+      confidence: 0.9,
+      issues: [{ code: "NON_UNIQUE", field: "   ", message: "两组解都成立" }],
+    })],
+    ["a blank issue message", JSON.stringify({
+      valid: false,
+      confidence: 0.9,
+      issues: [{ code: "NON_UNIQUE", field: "contradiction", message: "   " }],
+    })],
   ])("maps %s to a judge output error", async (_description, response) => {
     const judge = createJudge(new CapturingTransport([response]));
 

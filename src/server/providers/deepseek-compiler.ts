@@ -77,8 +77,6 @@ export function semanticV2Case(game: V2PrivateCase) {
       personalityTags: suspect.personalityTags,
       portraitKey: suspect.portraitKey,
       initialTestimony: suspect.initialTestimony,
-      privateAction: suspect.privateAction,
-      allowedFactIds: suspect.allowedFactIds,
     })),
     timelineFacts: game.timelineFacts.map((fact) => ({
       id: fact.id,
@@ -115,33 +113,69 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function restoreOmittedCoordinates(value: unknown, original: V2PrivateCase): unknown {
+function restoreOmittedImmutableFields(value: unknown, original: V2PrivateCase): unknown {
   if (!isRecord(value)) return value;
+  const visualFactsById = new Map(original.visualFacts.map((fact) => [fact.id, fact]));
+  const evidenceById = new Map(original.evidence.map((evidence) => [evidence.id, evidence]));
+  const suspectsById = new Map(original.suspects.map((suspect) => [suspect.id, suspect]));
   return {
     ...value,
-    visualFacts: Array.isArray(value.visualFacts)
-      ? value.visualFacts.map((fact, index) => isRecord(fact)
-        ? {
-            x: original.visualFacts[index]?.x,
-            y: original.visualFacts[index]?.y,
-            radius: original.visualFacts[index]?.radius,
-            confidence: original.visualFacts[index]?.confidence,
-            ...fact,
-          }
-        : fact)
-      : value.visualFacts,
-    evidence: Array.isArray(value.evidence)
-      ? value.evidence.map((evidence, index) => isRecord(evidence)
-        ? {
-            x: original.evidence[index]?.x,
-            y: original.evidence[index]?.y,
-            radius: original.evidence[index]?.radius,
-            confidence: original.evidence[index]?.confidence,
-            ...evidence,
-          }
-        : evidence)
-      : value.evidence,
+    visualFacts: restoreVisualFacts(value.visualFacts, visualFactsById),
+    evidence: restoreEvidence(value.evidence, evidenceById),
+    suspects: restoreSuspects(value.suspects, suspectsById),
   };
+}
+
+function restoreVisualFacts(
+  value: unknown,
+  originals: Map<string, V2PrivateCase["visualFacts"][number]>,
+) {
+  if (!Array.isArray(value)) return value;
+  return value.map((fact) => {
+    if (!isRecord(fact) || typeof fact.id !== "string") return fact;
+    const original = originals.get(fact.id);
+    return original ? {
+      x: original.x,
+      y: original.y,
+      radius: original.radius,
+      confidence: original.confidence,
+      ...fact,
+    } : fact;
+  });
+}
+
+function restoreEvidence(
+  value: unknown,
+  originals: Map<string, V2PrivateCase["evidence"][number]>,
+) {
+  if (!Array.isArray(value)) return value;
+  return value.map((evidence) => {
+    if (!isRecord(evidence) || typeof evidence.id !== "string") return evidence;
+    const original = originals.get(evidence.id);
+    return original ? {
+      x: original.x,
+      y: original.y,
+      radius: original.radius,
+      confidence: original.confidence,
+      ...evidence,
+    } : evidence;
+  });
+}
+
+function restoreSuspects(
+  value: unknown,
+  originals: Map<string, V2PrivateCase["suspects"][number]>,
+) {
+  if (!Array.isArray(value)) return value;
+  return value.map((suspect) => {
+    if (!isRecord(suspect) || typeof suspect.id !== "string") return suspect;
+    const original = originals.get(suspect.id);
+    return original ? {
+      privateAction: original.privateAction,
+      allowedFactIds: original.allowedFactIds,
+      ...suspect,
+    } : suspect;
+  });
 }
 
 function isGroundedFactbook(game: V2PrivateCase, expectedVisualFacts: PassObservation["visualFacts"]) {
@@ -152,8 +186,10 @@ function isGroundedFactbook(game: V2PrivateCase, expectedVisualFacts: PassObserv
   const timelineIds = new Set(game.timelineFacts.map((fact) => fact.id));
   const evidenceIds = new Set(game.evidence.map((evidence) => evidence.id));
   const claimIds = new Set(game.claims.map((claim) => claim.id));
+  const allowedFactIds = new Set([...timelineIds, ...claimIds]);
   if (
     suspectIds.size !== game.suspects.length
+    || timelineIds.size !== game.timelineFacts.length
     || evidenceIds.size !== game.evidence.length
     || claimIds.size !== game.claims.length
     || !hasUniqueValues(game.evidence.map((evidence) => evidence.visualFactId))
@@ -183,6 +219,10 @@ function isGroundedFactbook(game: V2PrivateCase, expectedVisualFacts: PassObserv
       || claim.evidenceRefs.some((reference) => !evidenceIds.has(reference))
     ) return false;
   }
+
+  if (game.suspects.some(
+    (suspect) => suspect.allowedFactIds.some((reference) => !allowedFactIds.has(reference)),
+  )) return false;
 
   const contradictionClaim = game.claims.find(
     (claim) => claim.id === game.contradiction.claimId,
@@ -222,6 +262,11 @@ function immutableFactbookFields(game: V2PrivateCase) {
       privateAction: suspect.privateAction,
       allowedFactIds: suspect.allowedFactIds,
     })),
+    timelineFacts: game.timelineFacts.map((fact) => ({ id: fact.id })),
+    claims: game.claims.map((claim) => ({
+      id: claim.id,
+      suspectId: claim.suspectId,
+    })),
   };
 }
 
@@ -260,7 +305,7 @@ export class DeepSeekFactbookCompiler implements CaseFactbookCompiler {
     try {
       const output = JSON.parse(content);
       const game = V2PrivateCaseSchema.parse(
-        repairSource ? restoreOmittedCoordinates(output, repairSource) : output,
+        repairSource ? restoreOmittedImmutableFields(output, repairSource) : output,
       );
       if (!isGroundedFactbook(game, expectedVisualFacts)) throw new Error("ungrounded");
       return game;
