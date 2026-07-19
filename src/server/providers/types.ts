@@ -1,4 +1,5 @@
 import type { GeneratedCase, PrivateCase } from "@/server/cases/contracts";
+import type { VisionObservation } from "@/server/cases/v2-contracts";
 
 export type ValidationIssue = {
   code: "NON_UNIQUE" | "CONTRADICTION" | "OUTSIDE_EVIDENCE" | "UNSAFE" | "COPY_QUALITY";
@@ -20,6 +21,16 @@ export interface VisionCaseProvider {
     locale: "zh-CN";
     traceId: string;
   }): Promise<GeneratedCase>;
+}
+
+export interface VisionObservationProvider {
+  observeScene(input: {
+    imageUrl: string;
+    imageWidth: number;
+    imageHeight: number;
+    locale: "zh-CN";
+    traceId: string;
+  }): Promise<VisionObservation>;
 }
 
 export interface CaseJudgeProvider {
@@ -55,4 +66,3 @@ export class ProviderError extends Error {
     return this.code !== "AUTH_FAILED";
   }
 }
-
