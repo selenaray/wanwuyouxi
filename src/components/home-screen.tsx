@@ -39,7 +39,7 @@ export function HomeScreen({ onStart, onSample, onPrivacy }: Props) {
           <span>开始扫描现场</span><span aria-hidden="true">↗</span>
         </button>
         <button className="secondary-button" type="button" onClick={onSample}>体验示例案件</button>
-        <p className="privacy-note">照片仅用于本次体验，默认不会离开你的浏览器</p>
+        <p className="privacy-note">照片会安全上传用于本次 AI 生成，并在 24 小时内删除</p>
       </div>
     </div>
   );

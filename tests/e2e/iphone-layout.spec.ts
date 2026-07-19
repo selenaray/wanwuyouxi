@@ -5,13 +5,15 @@ test.use({ viewport: { width: 375, height: 667 } });
 test("centers the primary label and keeps home actions inside a short iPhone viewport", async ({ page }) => {
   await page.goto("/");
 
+  await expect(page.getByText("9:41")).toHaveCount(0);
+
   const primary = page.getByRole("button", { name: "开始扫描现场" });
   const label = primary.getByText("开始扫描现场", { exact: true });
   const [primaryBox, labelBox, secondaryBox, privacyBox] = await Promise.all([
     primary.boundingBox(),
     label.boundingBox(),
     page.getByRole("button", { name: "体验示例案件" }).boundingBox(),
-    page.getByText("照片仅用于本次体验，默认不会离开你的浏览器").boundingBox(),
+    page.getByText("照片会安全上传用于本次 AI 生成，并在 24 小时内删除").boundingBox(),
   ]);
 
   expect(primaryBox).not.toBeNull();
