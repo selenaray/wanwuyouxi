@@ -17,10 +17,13 @@ function isGameState(value: unknown): value is GameState {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<GameState>;
   return (
-    candidate.version === 1 &&
+    candidate.version === 2 &&
     typeof candidate.screen === "string" &&
     VALID_SCREENS.includes(candidate.screen as GameScreen) &&
     Array.isArray(candidate.openedClueIds) &&
+    Array.isArray(candidate.openedEvidenceIds) &&
+    Array.isArray(candidate.unlockedSuspectIds) &&
+    (candidate.activeSuspectId === null || typeof candidate.activeSuspectId === "string") &&
     typeof candidate.attemptCount === "number"
   );
 }

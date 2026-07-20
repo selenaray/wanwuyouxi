@@ -37,9 +37,9 @@ const ClueSchema = z.object({
   y: z.number(),
   radius: z.number().optional(),
   confidence: z.number().optional(),
-});
+}).strict();
 
-const PlayerCaseSchema: z.ZodType<PlayerCase> = z.object({
+const V1PlayerCaseSchema = z.object({
   title: z.string(),
   caseNumber: z.string(),
   background: z.string(),
@@ -49,7 +49,59 @@ const PlayerCaseSchema: z.ZodType<PlayerCase> = z.object({
   question: z.string(),
   answerOptions: z.tuple([z.string(), z.string(), z.string()]),
   wrongAnswerHint: z.string(),
-});
+}).strict();
+
+const PortraitKeySchema = z.enum([
+  "noir-01", "noir-02", "noir-03", "noir-04", "noir-05", "noir-06",
+  "noir-07", "noir-08", "noir-09", "noir-10", "noir-11", "noir-12",
+]);
+
+const EvidenceSchema = z.object({
+  id: z.string(),
+  visualFactId: z.string(),
+  suspectId: z.string(),
+  objectName: z.string(),
+  publicDescription: z.string(),
+  regionHint: z.string(),
+  x: z.number(),
+  y: z.number(),
+  radius: z.number(),
+  confidence: z.number(),
+}).strict();
+
+const SuspectSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  identity: z.string(),
+  relation: z.string(),
+  personalityTags: z.tuple([z.string(), z.string()]),
+  portraitKey: PortraitKeySchema,
+  initialTestimony: z.string(),
+}).strict();
+
+const ClaimSchema = z.object({
+  id: z.string(),
+  suspectId: z.string(),
+  text: z.string(),
+}).strict();
+
+const V2PlayerCaseSchema = z.object({
+  version: z.literal(2),
+  title: z.string(),
+  caseNumber: z.string(),
+  background: z.string(),
+  objective: z.string(),
+  interactionMode: z.enum(["HOTSPOT", "CARD_FALLBACK"]),
+  evidence: z.tuple([EvidenceSchema, EvidenceSchema, EvidenceSchema]),
+  suspects: z.tuple([SuspectSchema, SuspectSchema, SuspectSchema]),
+  claims: z.tuple([ClaimSchema, ClaimSchema, ClaimSchema]),
+  wrongAnswerHint: z.string(),
+}).strict();
+
+const PlayerCaseSchema: z.ZodType<PlayerCase> = z.union([
+  V2PlayerCaseSchema,
+  V1PlayerCaseSchema,
+]);
 
 const FailureSchema = z.object({
   ok: z.literal(false),
@@ -139,7 +191,7 @@ export function getPlayerCase(caseId: string) {
     progress: { openedClueIds: string[]; attemptCount: number; completed: boolean };
   }>(`/api/cases/${encodeURIComponent(caseId)}`, { method: "GET" }, z.object({
     case: PlayerCaseSchema,
-    progress: z.object({ openedClueIds: z.array(z.string()), attemptCount: z.number(), completed: z.boolean() }),
+    progress: z.object({ openedClueIds: z.array(z.string()), attemptCount: z.number(), completed: z.boolean() }).strict(),
   }));
 }
 

@@ -1,11 +1,11 @@
-import type { PlayerCase } from "@/features/game/types";
+import type { V1PlayerCase } from "@/features/game/types";
 
 type Props = {
   selectedAnswerIndex: number | null;
   showHint: boolean;
   onSelect: (index: number) => void;
   onSubmit: () => void;
-  game: PlayerCase;
+  game: V1PlayerCase;
 };
 
 export function DeductionScreen({ game, selectedAnswerIndex, showHint, onSelect, onSubmit }: Props) {

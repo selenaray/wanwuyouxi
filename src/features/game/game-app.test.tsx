@@ -24,7 +24,7 @@ describe("GameApp", () => {
     fireEvent.click(screen.getByRole("button", { name: "体验示例案件" }));
     expect(screen.getByText("正在重建案发现场")) .toBeInTheDocument();
     act(() => vi.advanceTimersByTime(1800));
-    expect(screen.getByRole("heading", { name: "凌晨零点的失踪者" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "午夜桌面的证词" })).toBeInTheDocument();
   }
 
   it("runs the sample-photo generation flow", () => {
@@ -53,35 +53,29 @@ describe("GameApp", () => {
     expect(screen.getByRole("button", { name: "使用这张照片" })).toBeInTheDocument();
   });
 
-  it("collects three clues and reveals the truth after a correct answer", () => {
+  it("unlocks three suspects from evidence and opens a public suspect sheet", () => {
     reachBriefing();
     fireEvent.click(screen.getByRole("button", { name: "进入现场" }));
 
-    for (const clueName of ["查看停摆的时钟", "查看仍温热的马克杯", "查看翻开的笔记本"]) {
-      fireEvent.click(screen.getByRole("button", { name: clueName }));
-      fireEvent.click(screen.getByRole("button", { name: "收起线索" }));
+    expect(screen.getByText("已发现 0/3 物证 · 已解锁 0/3 嫌疑人")).toBeInTheDocument();
+    for (const evidenceName of ["查看台灯物证", "查看书本物证", "查看杯子物证"]) {
+      fireEvent.click(screen.getByRole("button", { name: evidenceName }));
+      fireEvent.click(screen.getByRole("button", { name: "收起物证" }));
     }
 
-    fireEvent.click(screen.getByRole("button", { name: "开始推理" }));
-    fireEvent.click(screen.getByRole("radio", { name: "宿舍天台" }));
-    fireEvent.click(screen.getByRole("button", { name: "提交推理" }));
-
-    expect(screen.getByText("案件已解开")).toBeInTheDocument();
-    expect(screen.getByText(/林夏没有离开宿舍楼/)).toBeInTheDocument();
+    expect(screen.getByText("已发现 3/3 物证 · 已解锁 3/3 嫌疑人")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "整理证词" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "查看乔野角色卡" }));
+    expect(screen.getByText("杯子从始至终都在原位。")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
-  it("shows a hint after one wrong answer", () => {
+  it("keeps a suspect locked until its linked evidence is opened", () => {
     reachBriefing();
     fireEvent.click(screen.getByRole("button", { name: "进入现场" }));
-    for (const clueName of ["查看停摆的时钟", "查看仍温热的马克杯", "查看翻开的笔记本"]) {
-      fireEvent.click(screen.getByRole("button", { name: clueName }));
-      fireEvent.click(screen.getByRole("button", { name: "收起线索" }));
-    }
-    fireEvent.click(screen.getByRole("button", { name: "开始推理" }));
-    fireEvent.click(screen.getByRole("radio", { name: "深夜车站" }));
-    fireEvent.click(screen.getByRole("button", { name: "提交推理" }));
 
-    expect(screen.getByText(/把时间、门禁和“最高处”放在一起想/)).toBeInTheDocument();
-    expect(screen.queryByText("案件已解开")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "查看乔野角色卡" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "查看杯子物证" }));
+    expect(screen.getByRole("button", { name: "查看乔野角色卡" })).toBeEnabled();
   });
 });

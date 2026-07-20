@@ -1,14 +1,17 @@
-import { MOCK_CASE, SAMPLE_IMAGE_URL } from "./mock-case";
-import type { GameEvent, GameState } from "./types";
+import { LEGACY_MOCK_CASE, MOCK_CASE, SAMPLE_IMAGE_URL } from "./mock-case";
+import { isV2PlayerCase, type GameEvent, type GameState } from "./types";
 
 export function createInitialState(): GameState {
   return {
-    version: 1,
+    version: 2,
     screen: "home",
     selectedImageUrl: null,
     selectedImageName: null,
     openedClueIds: [],
     activeClueId: null,
+    openedEvidenceIds: [],
+    unlockedSuspectIds: [],
+    activeSuspectId: null,
     selectedAnswerIndex: null,
     attemptCount: 0,
     showHint: false,
@@ -40,7 +43,12 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         errorCode: null,
         mode: "sample",
         caseData: MOCK_CASE,
-        truth: MOCK_CASE.truth,
+        truth: null,
+        openedClueIds: [],
+        activeClueId: null,
+        openedEvidenceIds: [],
+        unlockedSuspectIds: [],
+        activeSuspectId: null,
       };
     case "SELECT_IMAGE":
       return {
@@ -54,6 +62,11 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         caseId: null,
         caseData: null,
         truth: null,
+        openedClueIds: [],
+        activeClueId: null,
+        openedEvidenceIds: [],
+        unlockedSuspectIds: [],
+        activeSuspectId: null,
       };
     case "CONFIRM_IMAGE":
       return state.selectedImageUrl ? { ...state, screen: "scanning", errorCode: null } : state;
@@ -85,7 +98,12 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         ? { ...state, screen: "exploring", startedAt: event.now }
         : state;
     case "OPEN_CLUE": {
-      if (state.screen !== "exploring" || !state.caseData?.clues.some((clue) => clue.id === event.clueId)) {
+      if (
+        state.screen !== "exploring"
+        || !state.caseData
+        || isV2PlayerCase(state.caseData)
+        || !state.caseData.clues.some((clue) => clue.id === event.clueId)
+      ) {
         return state;
       }
       const openedClueIds = state.openedClueIds.includes(event.clueId)
@@ -93,10 +111,49 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         : [...state.openedClueIds, event.clueId];
       return { ...state, openedClueIds, activeClueId: event.clueId };
     }
+    case "OPEN_EVIDENCE": {
+      if (state.screen !== "exploring" || !state.caseData || !isV2PlayerCase(state.caseData)) {
+        return state;
+      }
+      const evidence = state.caseData.evidence.find((item) => item.id === event.evidenceId);
+      if (!evidence) return state;
+      const openedEvidenceIds = state.openedEvidenceIds.includes(evidence.id)
+        ? state.openedEvidenceIds
+        : [...state.openedEvidenceIds, evidence.id];
+      const unlockedSuspectIds = state.unlockedSuspectIds.includes(evidence.suspectId)
+        ? state.unlockedSuspectIds
+        : [...state.unlockedSuspectIds, evidence.suspectId];
+      return {
+        ...state,
+        openedEvidenceIds,
+        unlockedSuspectIds,
+        activeClueId: evidence.id,
+        activeSuspectId: null,
+      };
+    }
     case "CLOSE_CLUE":
       return { ...state, activeClueId: null };
+    case "OPEN_SUSPECT": {
+      if (
+        state.screen !== "exploring"
+        || !state.caseData
+        || !isV2PlayerCase(state.caseData)
+        || !state.unlockedSuspectIds.includes(event.suspectId)
+        || !state.caseData.suspects.some((suspect) => suspect.id === event.suspectId)
+      ) {
+        return state;
+      }
+      return { ...state, activeSuspectId: event.suspectId, activeClueId: null };
+    }
+    case "CLOSE_SUSPECT":
+      return { ...state, activeSuspectId: null };
     case "BEGIN_DEDUCTION":
-      return state.screen === "exploring" && state.openedClueIds.length === 3
+      return state.screen === "exploring"
+        && state.caseData
+        && (isV2PlayerCase(state.caseData)
+          ? state.caseData.evidence.every((evidence) => state.openedEvidenceIds.includes(evidence.id))
+            && state.caseData.suspects.every((suspect) => state.unlockedSuspectIds.includes(suspect.id))
+          : state.caseData.clues.every((clue) => state.openedClueIds.includes(clue.id)))
         ? { ...state, screen: "deduction", activeClueId: null }
         : state;
     case "SELECT_ANSWER":
@@ -108,7 +165,7 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         return state;
       }
       const attemptCount = state.attemptCount + 1;
-      const correct = event.answerIndex === MOCK_CASE.correctAnswerIndex;
+      const correct = event.answerIndex === LEGACY_MOCK_CASE.correctAnswerIndex;
       if (correct || attemptCount === 2) {
         return {
           ...state,

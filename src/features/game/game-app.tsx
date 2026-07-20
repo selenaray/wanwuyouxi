@@ -29,6 +29,7 @@ import {
 import { prepareImageForUpload } from "./image-compression";
 import { SAMPLE_IMAGE_URL } from "./mock-case";
 import { loadGameState, saveGameState } from "./persistence";
+import { isV2PlayerCase } from "./types";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif"];
@@ -229,12 +230,18 @@ export function GameApp() {
           imageUrl={state.selectedImageUrl ?? SAMPLE_IMAGE_URL}
           openedClueIds={state.openedClueIds}
           activeClueId={state.activeClueId}
+          openedEvidenceIds={state.openedEvidenceIds}
+          unlockedSuspectIds={state.unlockedSuspectIds}
+          activeSuspectId={state.activeSuspectId}
           onOpenClue={(clueId) => dispatch({ type: "OPEN_CLUE", clueId })}
+          onOpenEvidence={(evidenceId) => dispatch({ type: "OPEN_EVIDENCE", evidenceId })}
           onCloseClue={() => dispatch({ type: "CLOSE_CLUE" })}
+          onOpenSuspect={(suspectId) => dispatch({ type: "OPEN_SUSPECT", suspectId })}
+          onCloseSuspect={() => dispatch({ type: "CLOSE_SUSPECT" })}
           onDeduce={() => dispatch({ type: "BEGIN_DEDUCTION" })}
         />
       )}
-      {state.screen === "deduction" && state.caseData && (
+      {state.screen === "deduction" && state.caseData && !isV2PlayerCase(state.caseData) && (
         <DeductionScreen
           game={state.caseData}
           selectedAnswerIndex={state.selectedAnswerIndex}
