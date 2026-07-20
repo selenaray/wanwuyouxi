@@ -1,4 +1,28 @@
-export { FakeCaseJudgeProvider, FakeVisionCaseProvider } from "./fake";
+export {
+  FakeCaseFactbookCompiler,
+  FakeCaseFactbookJudge,
+  FakeCaseJudgeProvider,
+  FakeVisionCaseProvider,
+  FakeVisionObservationProvider,
+} from "./fake";
 export { createDeepSeekCaseJudgeFromEnv, DeepSeekCaseJudge } from "./deepseek";
+export {
+  createDeepSeekFactbookCompilerFromEnv,
+  DeepSeekFactbookCompiler,
+} from "./deepseek-compiler";
+export {
+  createDeepSeekFactbookJudgeFromEnv,
+  DeepSeekFactbookJudge,
+} from "./deepseek-factbook-judge";
 export { createQwenVisionProviderFromEnv, QwenVisionProvider } from "./qwen";
-export type { CaseJudgeProvider, VisionCaseProvider } from "./types";
+export {
+  createQwenObservationProviderFromEnv,
+  QwenObservationProvider,
+} from "./qwen-observation";
+export type {
+  CaseFactbookCompiler,
+  CaseFactbookJudge,
+  CaseJudgeProvider,
+  VisionCaseProvider,
+  VisionObservationProvider,
+} from "./types";

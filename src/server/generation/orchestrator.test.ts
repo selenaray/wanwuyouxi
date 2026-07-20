@@ -1,15 +1,29 @@
 // @vitest-environment node
 
 import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createTestDatabase, type TestDatabase } from "../../../tests/helpers/database";
-import { cases as casesTable } from "@/server/db/schema";
+import { V2PrivateCaseSchema } from "@/server/cases/v2-contracts";
+import { validObservation, validV2Case } from "@/server/cases/v2-contracts.fixture";
 import { CaseRepository, GenerationJobRepository } from "@/server/db/repositories";
-import { FakeCaseJudgeProvider, FakeVisionCaseProvider } from "@/server/providers/fake";
-import { ProviderError, type CaseJudgeProvider } from "@/server/providers/types";
+import { cases as casesTable } from "@/server/db/schema";
+import {
+  FakeCaseFactbookCompiler,
+  FakeCaseFactbookJudge,
+  FakeVisionObservationProvider,
+} from "@/server/providers/fake";
+import { ProviderError } from "@/server/providers/types";
+import type {
+  CaseFactbookCompiler,
+  CaseFactbookJudge,
+  VisionObservationProvider,
+} from "@/server/providers/types";
 
 import { runGenerationJob } from "./orchestrator";
+
+const signedImageUrl = "signed://private-photo?storageKey=secret&sessionId=private";
+const validGame = V2PrivateCaseSchema.parse(validV2Case);
 
 describe("runGenerationJob", () => {
   let database: TestDatabase;
@@ -22,132 +36,192 @@ describe("runGenerationJob", () => {
     await database.close();
   });
 
-  it("publishes a fake-provider case exactly once", async () => {
+  async function createLeasedJob(key: string) {
     const sessionId = await database.seedSession();
-    const imageAssetId = await database.seedImageAsset(sessionId, "worker-photo-hash");
+    const imageAssetId = await database.seedImageAsset(sessionId, `${key}-photo-hash`);
     const jobs = new GenerationJobRepository(database.db);
     const job = await jobs.createGenerationJob({
       sessionId,
       imageAssetId,
-      imageSha256: "worker-photo-hash",
-      idempotencyKey: "worker-capture",
+      imageSha256: `${key}-photo-hash`,
+      idempotencyKey: `${key}-capture`,
     });
-    await jobs.leaseNextJob("worker-a", new Date(), 60);
-    const dependencies = {
+    await jobs.leaseNextJob(`worker-${key}`, new Date(), 60);
+    return { job, jobs };
+  }
+
+  function dependencies(
+    jobs: GenerationJobRepository,
+    overrides: Partial<{
+      vision: VisionObservationProvider;
+      compiler: CaseFactbookCompiler;
+      judge: CaseFactbookJudge;
+    }> = {},
+  ) {
+    return {
       jobs,
       cases: new CaseRepository(database.db),
-      storage: { createReadUrl: async () => "data:image/jpeg;base64,/9j/", put: async () => ({ key: "unused" }), delete: async () => undefined },
-      vision: new FakeVisionCaseProvider(),
-      judge: new FakeCaseJudgeProvider(),
+      storage: {
+        createReadUrl: vi.fn().mockResolvedValue(signedImageUrl),
+        put: vi.fn(),
+        delete: vi.fn(),
+      },
+      vision: overrides.vision ?? {
+        observeScene: vi.fn().mockResolvedValue(structuredClone(validObservation)),
+      },
+      compiler: overrides.compiler ?? {
+        compileCase: vi.fn().mockResolvedValue(structuredClone(validGame)),
+        repairCase: vi.fn().mockResolvedValue(structuredClone(validGame)),
+      },
+      judge: overrides.judge ?? {
+        validateCase: vi.fn().mockResolvedValue({ valid: true, confidence: 0.99, issues: [] }),
+      },
     };
+  }
 
-    await runGenerationJob(job.id, dependencies);
-    await runGenerationJob(job.id, dependencies);
+  it("observes, compiles, validates, and publishes once without leaking the signed URL", async () => {
+    const { job, jobs } = await createLeasedJob("success");
+    const vision = new FakeVisionObservationProvider();
+    const compiler = new FakeCaseFactbookCompiler();
+    const judge = new FakeCaseFactbookJudge();
+    const observe = vi.spyOn(vision, "observeScene");
+    const compile = vi.spyOn(compiler, "compileCase");
+    const semanticJudge = vi.spyOn(judge, "validateCase");
+    const deps = dependencies(jobs, { vision, compiler, judge });
+
+    await runGenerationJob(job.id, deps);
+    await runGenerationJob(job.id, deps);
+
+    expect(observe).toHaveBeenCalledOnce();
+    expect(observe).toHaveBeenCalledWith(expect.objectContaining({
+      imageUrl: signedImageUrl,
+      traceId: expect.any(String),
+    }));
+    expect(compile).toHaveBeenCalledWith({
+      observation: validObservation,
+      traceId: expect.any(String),
+    });
+    expect(semanticJudge).toHaveBeenCalledOnce();
+    expect(semanticJudge).toHaveBeenCalledWith({
+      game: validV2Case,
+      traceId: expect.any(String),
+    });
+    expect(observe.mock.invocationCallOrder[0]).toBeLessThan(compile.mock.invocationCallOrder[0]);
+    expect(compile.mock.invocationCallOrder[0]).toBeLessThan(
+      semanticJudge.mock.invocationCallOrder[0],
+    );
+    expect(JSON.stringify(compile.mock.calls)).not.toContain("signed://");
+    expect(JSON.stringify(semanticJudge.mock.calls)).not.toContain("signed://");
+    expect(await jobs.getJob(job.id)).toMatchObject({ status: "SUCCEEDED" });
 
     const published = await database.db.select().from(casesTable).where(eq(casesTable.jobId, job.id));
     expect(published).toHaveLength(1);
-    expect((await jobs.getJob(job.id))?.status).toBe("SUCCEEDED");
+    expect(published[0]?.privatePayload).toEqual(validV2Case);
+    expect(published[0]?.judgeDegraded).toBe(false);
   });
 
-  it("uses at most one validation and one targeted repair call", async () => {
-    const sessionId = await database.seedSession();
-    const imageAssetId = await database.seedImageAsset(sessionId, "repair-photo-hash");
-    const jobs = new GenerationJobRepository(database.db);
-    const job = await jobs.createGenerationJob({
-      sessionId,
-      imageAssetId,
-      imageSha256: "repair-photo-hash",
-      idempotencyKey: "repair-capture",
-    });
-    await jobs.leaseNextJob("worker-repair", new Date(), 60);
-    let validationCalls = 0;
-    let repairCalls = 0;
-    const judge: CaseJudgeProvider = {
-      async validateCase() {
-        validationCalls += 1;
-        return {
-          valid: false,
-          confidence: 0.7,
-          issues: [{ code: "COPY_QUALITY", field: "wrongAnswerHint", message: "提示不够具体" }],
-        };
-      },
-      async repairCase({ game }) {
-        repairCalls += 1;
-        return { ...game, wrongAnswerHint: "比较三处痕迹覆盖灰尘的先后顺序。" };
-      },
+  it("rejects an observation before compiling", async () => {
+    const { job, jobs } = await createLeasedJob("reject");
+    const vision: VisionObservationProvider = {
+      observeScene: vi.fn().mockResolvedValue({
+        decision: "BLOCK",
+        reasonCode: "UNSAFE",
+        sceneSummary: "检测到不适合生成的场景",
+        riskLabels: ["unsafe"],
+        visualFacts: [],
+      }),
     };
+    const deps = dependencies(jobs, { vision });
 
-    await runGenerationJob(job.id, {
-      jobs,
-      cases: new CaseRepository(database.db),
-      storage: { createReadUrl: async () => "data:image/jpeg;base64,/9j/", put: async () => ({ key: "unused" }), delete: async () => undefined },
-      vision: new FakeVisionCaseProvider(),
-      judge,
-    });
+    await runGenerationJob(job.id, deps);
 
-    expect(validationCalls).toBe(1);
-    expect(repairCalls).toBe(1);
-    expect((await jobs.getJob(job.id))?.status).toBe("SUCCEEDED");
+    expect(deps.compiler.compileCase).not.toHaveBeenCalled();
+    expect(deps.judge.validateCase).not.toHaveBeenCalled();
+    expect(await jobs.getJob(job.id)).toMatchObject({ status: "REJECTED", errorCode: "UNSAFE" });
   });
 
-  it("marks a high-confidence case as judge-degraded when the judge is temporarily unavailable", async () => {
-    const sessionId = await database.seedSession();
-    const imageAssetId = await database.seedImageAsset(sessionId, "degraded-photo-hash");
-    const jobs = new GenerationJobRepository(database.db);
-    const job = await jobs.createGenerationJob({
-      sessionId,
-      imageAssetId,
-      imageSha256: "degraded-photo-hash",
-      idempotencyKey: "degraded-capture",
-    });
-    await jobs.leaseNextJob("worker-degraded", new Date(), 60);
-    const judge: CaseJudgeProvider = {
-      async validateCase() { throw new ProviderError("UNAVAILABLE", "temporary"); },
-      async repairCase({ game }) { return game; },
+  it("fails a deterministically invalid factbook before semantic judging", async () => {
+    const { job, jobs } = await createLeasedJob("invalid");
+    const invalidGame = structuredClone(validGame);
+    invalidGame.evidence[1].id = invalidGame.evidence[0].id;
+    const compiler: CaseFactbookCompiler = {
+      compileCase: vi.fn().mockResolvedValue(invalidGame),
+      repairCase: vi.fn(),
     };
+    const deps = dependencies(jobs, { compiler });
 
-    await runGenerationJob(job.id, {
-      jobs,
-      cases: new CaseRepository(database.db),
-      storage: { createReadUrl: async () => "data:image/jpeg;base64,/9j/", put: async () => ({ key: "unused" }), delete: async () => undefined },
-      vision: new FakeVisionCaseProvider(),
-      judge,
-    });
+    await runGenerationJob(job.id, deps);
 
-    const [published] = await database.db.select().from(casesTable).where(eq(casesTable.jobId, job.id));
-    expect(published.judgeDegraded).toBe(true);
+    expect(deps.judge.validateCase).not.toHaveBeenCalled();
+    expect(await jobs.getJob(job.id)).toMatchObject({ status: "FAILED" });
+    await expect(database.db.select().from(casesTable).where(eq(casesTable.jobId, job.id)))
+      .resolves.toHaveLength(0);
   });
 
-  it("requeues one transient vision failure and stops after the second attempt", async () => {
-    const sessionId = await database.seedSession();
-    const imageAssetId = await database.seedImageAsset(sessionId, "retry-photo-hash");
-    const jobs = new GenerationJobRepository(database.db);
-    const job = await jobs.createGenerationJob({
-      sessionId,
-      imageAssetId,
-      imageSha256: "retry-photo-hash",
-      idempotencyKey: "retry-capture",
-    });
-    const dependencies = {
-      jobs,
-      cases: new CaseRepository(database.db),
-      storage: { createReadUrl: async () => "data:image/jpeg;base64,/9j/", put: async () => ({ key: "unused" }), delete: async () => undefined },
-      vision: {
-        async generateCase(): Promise<never> {
-          throw new ProviderError("UNAVAILABLE", "QWEN_UNAVAILABLE");
-        },
-      },
-      judge: new FakeCaseJudgeProvider(),
+  it("repairs at most once and publishes after deterministic and semantic revalidation", async () => {
+    const { job, jobs } = await createLeasedJob("repair");
+    const issue = { code: "COPY_QUALITY" as const, field: "wrongAnswerHint", message: "提示不具体" };
+    const repairedGame = { ...structuredClone(validGame), wrongAnswerHint: "先对照杯底水印与乔野的绝对说法。" };
+    const compiler: CaseFactbookCompiler = {
+      compileCase: vi.fn().mockResolvedValue(structuredClone(validGame)),
+      repairCase: vi.fn().mockResolvedValue(repairedGame),
     };
+    const judge: CaseFactbookJudge = {
+      validateCase: vi
+        .fn()
+        .mockResolvedValueOnce({ valid: false, confidence: 0.7, issues: [issue] })
+        .mockResolvedValueOnce({ valid: true, confidence: 0.98, issues: [] }),
+    };
+    const deps = dependencies(jobs, { compiler, judge });
 
-    await jobs.leaseNextJob("worker-retry-1", new Date(), 60);
-    await expect(runGenerationJob(job.id, dependencies)).rejects.toMatchObject({ code: "UNAVAILABLE" });
-    expect((await jobs.getJob(job.id))?.status).toBe("PENDING");
+    await runGenerationJob(job.id, deps);
 
-    await jobs.leaseNextJob("worker-retry-2", new Date(), 60);
-    await expect(runGenerationJob(job.id, dependencies)).rejects.toMatchObject({ code: "UNAVAILABLE" });
-    expect((await jobs.getJob(job.id))?.status).toBe("RETRYABLE_FAILED");
-    expect((await jobs.getJob(job.id))?.attemptCount).toBe(2);
-    expect((await jobs.getJob(job.id))?.errorCode).toBe("QWEN_UNAVAILABLE");
+    expect(compiler.repairCase).toHaveBeenCalledOnce();
+    expect(compiler.repairCase).toHaveBeenCalledWith({
+      game: validV2Case,
+      issues: [issue],
+      traceId: expect.any(String),
+    });
+    expect(judge.validateCase).toHaveBeenCalledTimes(2);
+    expect(judge.validateCase).toHaveBeenLastCalledWith({
+      game: repairedGame,
+      traceId: expect.any(String),
+    });
+    expect(await jobs.getJob(job.id)).toMatchObject({ status: "SUCCEEDED" });
+  });
+
+  it("fails instead of repairing twice when semantic revalidation still fails", async () => {
+    const { job, jobs } = await createLeasedJob("second-failure");
+    const issue = { code: "NON_UNIQUE" as const, field: "truth", message: "推理不唯一" };
+    const compiler: CaseFactbookCompiler = {
+      compileCase: vi.fn().mockResolvedValue(structuredClone(validGame)),
+      repairCase: vi.fn().mockResolvedValue(structuredClone(validGame)),
+    };
+    const judge: CaseFactbookJudge = {
+      validateCase: vi.fn().mockResolvedValue({ valid: false, confidence: 0.4, issues: [issue] }),
+    };
+    const deps = dependencies(jobs, { compiler, judge });
+
+    await runGenerationJob(job.id, deps);
+
+    expect(compiler.repairCase).toHaveBeenCalledOnce();
+    expect(judge.validateCase).toHaveBeenCalledTimes(2);
+    expect(await jobs.getJob(job.id)).toMatchObject({ status: "FAILED" });
+    await expect(database.db.select().from(casesTable).where(eq(casesTable.jobId, job.id)))
+      .resolves.toHaveLength(0);
+  });
+
+  it("never publishes a V2 case when semantic judging is unavailable", async () => {
+    const { job, jobs } = await createLeasedJob("judge-outage");
+    const judge: CaseFactbookJudge = {
+      validateCase: vi.fn().mockRejectedValue(new ProviderError("UNAVAILABLE", "temporary")),
+    };
+    const deps = dependencies(jobs, { judge });
+
+    await expect(runGenerationJob(job.id, deps)).rejects.toMatchObject({ code: "UNAVAILABLE" });
+
+    expect(await jobs.getJob(job.id)).toMatchObject({ status: "PENDING" });
+    await expect(database.db.select().from(casesTable).where(eq(casesTable.jobId, job.id)))
+      .resolves.toHaveLength(0);
   });
 });

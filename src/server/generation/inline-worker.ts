@@ -3,10 +3,12 @@ import { CaseRepository, GenerationJobRepository } from "@/server/db/repositorie
 import { runGenerationJob } from "@/server/generation/orchestrator";
 import { runWorkerOnce } from "@/server/generation/worker";
 import {
-  FakeCaseJudgeProvider,
-  FakeVisionCaseProvider,
-  createDeepSeekCaseJudgeFromEnv,
-  createQwenVisionProviderFromEnv,
+  FakeCaseFactbookCompiler,
+  FakeCaseFactbookJudge,
+  FakeVisionObservationProvider,
+  createDeepSeekFactbookCompilerFromEnv,
+  createDeepSeekFactbookJudgeFromEnv,
+  createQwenObservationProviderFromEnv,
 } from "@/server/providers";
 import { getImageStorage } from "@/server/storage";
 
@@ -52,11 +54,14 @@ export function createLocalGenerationTrigger(db: AppDatabase) {
     cases: new CaseRepository(db),
     storage: getImageStorage(),
     vision: process.env.QWEN_API_KEY
-      ? createQwenVisionProviderFromEnv()
-      : new FakeVisionCaseProvider(),
+      ? createQwenObservationProviderFromEnv()
+      : new FakeVisionObservationProvider(),
+    compiler: process.env.DEEPSEEK_API_KEY
+      ? createDeepSeekFactbookCompilerFromEnv()
+      : new FakeCaseFactbookCompiler(),
     judge: process.env.DEEPSEEK_API_KEY
-      ? createDeepSeekCaseJudgeFromEnv()
-      : new FakeCaseJudgeProvider(),
+      ? createDeepSeekFactbookJudgeFromEnv()
+      : new FakeCaseFactbookJudge(),
   };
 
   return createInlineGenerationTrigger(() =>

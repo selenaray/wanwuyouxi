@@ -1,6 +1,19 @@
 import type { GeneratedCase, PrivateCase } from "@/server/cases/contracts";
+import {
+  V2PrivateCaseSchema,
+  VisionObservationSchema,
+  type V2PrivateCase,
+} from "@/server/cases/v2-contracts";
+import { validObservation, validV2Case } from "@/server/cases/v2-contracts.fixture";
 
-import type { CaseJudgeProvider, VisionCaseProvider } from "./types";
+import type {
+  CaseFactbookCompiler,
+  CaseFactbookJudge,
+  CaseJudgeProvider,
+  ValidationIssue,
+  VisionCaseProvider,
+  VisionObservationProvider,
+} from "./types";
 
 export const fakePrivateCase: PrivateCase = {
   title: "午夜访客",
@@ -42,3 +55,31 @@ export class FakeCaseJudgeProvider implements CaseJudgeProvider {
   }
 }
 
+export const fakeObservation = VisionObservationSchema.parse(validObservation);
+export const fakeV2Case = V2PrivateCaseSchema.parse(validV2Case);
+
+export class FakeVisionObservationProvider implements VisionObservationProvider {
+  async observeScene() {
+    return structuredClone(fakeObservation);
+  }
+}
+
+export class FakeCaseFactbookCompiler implements CaseFactbookCompiler {
+  async compileCase() {
+    return structuredClone(fakeV2Case);
+  }
+
+  async repairCase(input: {
+    game: V2PrivateCase;
+    issues: ValidationIssue[];
+    traceId: string;
+  }) {
+    return structuredClone(input.game);
+  }
+}
+
+export class FakeCaseFactbookJudge implements CaseFactbookJudge {
+  async validateCase() {
+    return { valid: true as const, confidence: 0.99, issues: [] };
+  }
+}
