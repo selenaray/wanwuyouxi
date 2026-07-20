@@ -12,7 +12,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-import type { JobStatus, PrivateCase } from "@/server/cases/contracts";
+import type { JobStatus, PrivatePayload } from "@/server/cases/contracts";
 
 const createdAt = timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
@@ -71,7 +71,7 @@ export const cases = pgTable("cases", {
   id: uuid("id").primaryKey().defaultRandom(),
   jobId: uuid("job_id").notNull().unique().references(() => generationJobs.id),
   sessionId: uuid("session_id").notNull().references(() => anonymousSessions.id),
-  privatePayload: jsonb("private_payload").$type<PrivateCase>().notNull(),
+  privatePayload: jsonb("private_payload").$type<PrivatePayload>().notNull(),
   judgeDegraded: boolean("judge_degraded").notNull().default(false),
   createdAt,
 });
@@ -118,4 +118,3 @@ export const modelCalls = pgTable(
   },
   (table) => [index("model_calls_job_idx").on(table.jobId)],
 );
-

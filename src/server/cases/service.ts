@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 
-import { toPlayerCase } from "@/server/cases/contracts";
+import { toPlayerPayload } from "@/server/cases/contracts";
 import type { AppDatabase } from "@/server/db/client";
 import { CaseRepository } from "@/server/db/repositories";
 import { cases, gameSessions, imageAssets } from "@/server/db/schema";
@@ -34,7 +34,7 @@ export class CaseService {
 
     if (!row) throw new Error("CASE_NOT_FOUND");
     return {
-      case: toPlayerCase(row.privateCase),
+      case: toPlayerPayload(row.privateCase),
       progress: {
         openedClueIds: row.openedClueIds,
         attemptCount: row.attemptCount,
@@ -64,9 +64,20 @@ export class CaseService {
 
     if (!row) throw new Error("CASE_NOT_FOUND");
     if (!row.completedAt) throw new Error("CASE_NOT_COMPLETED");
+    const privateCase = row.privateCase;
+    if ("version" in privateCase && privateCase.version === 2) {
+      return {
+        version: 2 as const,
+        truth: privateCase.truth,
+        liarSuspectId: privateCase.liarSuspectId,
+        contradiction: privateCase.contradiction,
+        firstAnswerCorrect: row.firstAnswerCorrect,
+      };
+    }
+    if (!("correctAnswerIndex" in privateCase)) throw new Error("CASE_PAYLOAD_INVALID");
     return {
-      truth: row.privateCase.truth,
-      correctAnswerIndex: row.privateCase.correctAnswerIndex,
+      truth: privateCase.truth,
+      correctAnswerIndex: privateCase.correctAnswerIndex,
       firstAnswerCorrect: row.firstAnswerCorrect,
     };
   }
@@ -102,4 +113,3 @@ export class CaseService {
     return Boolean(image.deletedAt);
   }
 }
-

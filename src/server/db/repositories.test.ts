@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDatabase, type TestDatabase } from "../../../tests/helpers/database";
 
 import type { PrivateCase } from "@/server/cases/contracts";
+import { fakeV2Case } from "@/server/providers/fake";
 
 import { CaseRepository, GenerationJobRepository } from "./repositories";
 
@@ -153,6 +154,34 @@ describe("CaseRepository", () => {
     expect(player).not.toHaveProperty("correctAnswerIndex");
     expect(player).not.toHaveProperty("truth");
     expect(player?.title).toBe(privateCase.title);
+  });
+
+  it("projects V2 factbooks without private fields", async () => {
+    const published = await cases.publishCase({
+      jobId,
+      sessionId,
+      privateCase: fakeV2Case,
+      judgeDegraded: false,
+    });
+    const player = await cases.getPlayerCase(published.id, sessionId);
+    const serialized = JSON.stringify(player);
+
+    expect(player).toMatchObject({
+      version: 2,
+      evidence: expect.arrayContaining([expect.objectContaining({ id: fakeV2Case.evidence[0].id })]),
+      suspects: expect.arrayContaining([expect.objectContaining({ name: fakeV2Case.suspects[0].name })]),
+    });
+    for (const forbidden of [
+      "liarSuspectId",
+      "privateAction",
+      "allowedFactIds",
+      "explanation",
+      "motive",
+      "evidenceChain",
+      "summary",
+    ]) {
+      expect(serialized).not.toContain(forbidden);
+    }
   });
 
   it("allows at most two server-authoritative answer attempts", async () => {

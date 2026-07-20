@@ -1,6 +1,6 @@
 import { and, asc, count, eq, gte, isNull, lt, or } from "drizzle-orm";
 
-import { toPlayerCase, type JobStatus, type PrivateCase } from "@/server/cases/contracts";
+import { toPlayerPayload, type JobStatus, type PrivatePayload } from "@/server/cases/contracts";
 
 import type { AppDatabase } from "./client";
 import { anonymousSessions, answerAttempts, cases, gameSessions, generationJobs, imageAssets } from "./schema";
@@ -194,7 +194,7 @@ export class GenerationJobRepository {
 type PublishCaseInput = {
   jobId: string;
   sessionId: string;
-  privateCase: PrivateCase;
+  privateCase: PrivatePayload;
   judgeDegraded: boolean;
 };
 
@@ -260,7 +260,7 @@ export class CaseRepository {
       .where(and(eq(cases.id, caseId), eq(cases.sessionId, sessionId)))
       .limit(1);
 
-    return row ? toPlayerCase(row.payload) : null;
+    return row ? toPlayerPayload(row.payload) : null;
   }
 
   async recordAnswer(
@@ -295,7 +295,13 @@ export class CaseRepository {
       if (game.completedAt || game.attemptCount >= 2) throw new Error("ANSWER_LIMIT_REACHED");
 
       const attemptCount = game.attemptCount + 1;
-      const correct = selectedAnswerIndex === game.privateCase.correctAnswerIndex;
+      const privateCase = game.privateCase;
+      const correctAnswerIndex = "correctAnswerIndex" in privateCase
+        ? privateCase.correctAnswerIndex
+        : privateCase.suspects.findIndex(
+          (suspect) => suspect.id === privateCase.liarSuspectId,
+        );
+      const correct = selectedAnswerIndex === correctAnswerIndex;
       const completed = correct || attemptCount === 2;
       const completedAt = completed ? new Date() : null;
       const firstAnswerCorrect = attemptCount === 1 ? correct : game.firstAnswerCorrect;
