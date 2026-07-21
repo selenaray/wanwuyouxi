@@ -156,6 +156,10 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
           : state.caseData.clues.every((clue) => state.openedClueIds.includes(clue.id)))
         ? { ...state, screen: "deduction", activeClueId: null }
         : state;
+    case "RETURN_TO_SCENE":
+      return state.screen === "deduction"
+        ? { ...state, screen: "exploring", selectedAnswerIndex: null }
+        : state;
     case "SELECT_ANSWER":
       return state.screen === "deduction"
         ? { ...state, selectedAnswerIndex: event.answerIndex }

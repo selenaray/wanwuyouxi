@@ -136,6 +136,7 @@ export type GameEvent =
   | { type: "OPEN_SUSPECT"; suspectId: string }
   | { type: "CLOSE_SUSPECT" }
   | { type: "BEGIN_DEDUCTION" }
+  | { type: "RETURN_TO_SCENE" }
   | { type: "SELECT_ANSWER"; answerIndex: number }
   | { type: "SUBMIT_ANSWER"; answerIndex: number; now: number }
   | { type: "ANSWER_RESPONSE"; correct: boolean; completed: boolean; attemptCount: number; now: number }

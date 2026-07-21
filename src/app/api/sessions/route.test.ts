@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createTestDatabase, type TestDatabase } from "../../../../tests/helpers/database";
 
-import { createSessionRoute } from "./route";
+import { createSessionRoute } from "./handler";
 
 describe("POST /api/sessions", () => {
   let database: TestDatabase;

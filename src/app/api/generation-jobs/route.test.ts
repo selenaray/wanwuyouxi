@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createTestDatabase, type TestDatabase } from "../../../../tests/helpers/database";
 
-import { createGenerationJobsRoute } from "./route";
+import { createGenerationJobsRoute } from "./handler";
 
 describe("POST /api/generation-jobs", () => {
   let database: TestDatabase;

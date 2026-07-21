@@ -12,6 +12,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { PrivacySheet } from "@/components/privacy-sheet";
 import { ResultScreen } from "@/components/result-screen";
 import { ScanningScreen } from "@/components/scanning-screen";
+import { TestimonySummaryScreen } from "@/components/testimony-summary-screen";
 
 import { createInitialState, transitionGame } from "./game-machine";
 import {
@@ -250,6 +251,12 @@ export function GameApp() {
           onSubmit={() => {
             void submitCurrentAnswer();
           }}
+        />
+      )}
+      {state.screen === "deduction" && state.caseData && isV2PlayerCase(state.caseData) && (
+        <TestimonySummaryScreen
+          game={state.caseData}
+          onBack={() => dispatch({ type: "RETURN_TO_SCENE" })}
         />
       )}
       {state.screen === "result" && state.caseData && state.truth && (

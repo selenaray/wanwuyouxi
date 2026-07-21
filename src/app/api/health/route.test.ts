@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { createHealthRoute, createRuntimeHealthRoute } from "./route";
+import { createHealthRoute, createRuntimeHealthRoute } from "./handler";
 
 describe("GET /api/health", () => {
   it("returns 200 when the database is available", async () => {

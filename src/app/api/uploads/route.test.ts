@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDatabase, type TestDatabase } from "../../../../tests/helpers/database";
 import { MemoryImageStorage } from "@/server/storage/memory";
 
-import { createUploadRoute } from "./route";
+import { createUploadRoute } from "./handler";
 
 describe("POST /api/uploads", () => {
   let database: TestDatabase;
@@ -80,4 +80,3 @@ describe("POST /api/uploads", () => {
     expect(body.error.code).toBe("INVALID_IMAGE");
   });
 });
-

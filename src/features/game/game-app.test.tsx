@@ -65,6 +65,10 @@ describe("GameApp", () => {
 
     expect(screen.getByText("已发现 3/3 物证 · 已解锁 3/3 嫌疑人")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "整理证词" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "整理证词" }));
+    expect(screen.getByRole("heading", { name: "哪句话与现场物证矛盾？" })).toBeInTheDocument();
+    expect(screen.getByText("杯子从始至终都在原位。")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "返回现场" }));
     fireEvent.click(screen.getByRole("button", { name: "查看乔野角色卡" }));
     expect(screen.getByText("杯子从始至终都在原位。")).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
