@@ -32,18 +32,27 @@ export async function POST(request: Request) {
     if (width < 1 || height < 1 || width > 10000 || height > 10000) throw new Error("INVALID_IMAGE");
     const imageUrl = `data:${image.type || "image/jpeg"};base64,${bytes.toString("base64")}`;
     const hasLiveModels = Boolean(process.env.QWEN_API_KEY && process.env.DEEPSEEK_API_KEY);
-    const result = await generateStatelessCase({
-      imageUrl,
-      imageWidth: width,
-      imageHeight: height,
-      traceId,
-    }, {
-      vision: hasLiveModels ? createQwenObservationProviderFromEnv() : new FakeVisionObservationProvider(),
-      compiler: hasLiveModels ? createDeepSeekFactbookCompilerFromEnv() : new FakeCaseFactbookCompiler(),
-      judge: hasLiveModels ? createDeepSeekFactbookJudgeFromEnv() : new FakeCaseFactbookJudge(),
-    });
+    const input = { imageUrl, imageWidth: width, imageHeight: height, traceId };
+    let degraded = false;
+    let result;
+    try {
+      result = await generateStatelessCase(input, {
+        vision: hasLiveModels ? createQwenObservationProviderFromEnv() : new FakeVisionObservationProvider(),
+        compiler: hasLiveModels ? createDeepSeekFactbookCompilerFromEnv() : new FakeCaseFactbookCompiler(),
+        judge: hasLiveModels ? createDeepSeekFactbookJudgeFromEnv() : new FakeCaseFactbookJudge(),
+      });
+    } catch (error) {
+      if (!hasLiveModels) throw error;
+      degraded = true;
+      console.warn("LIVE_GENERATION_FALLBACK", errorCode(error));
+      result = await generateStatelessCase(input, {
+        vision: new FakeVisionObservationProvider(),
+        compiler: new FakeCaseFactbookCompiler(),
+        judge: new FakeCaseFactbookJudge(),
+      });
+    }
 
-    return Response.json({ ok: true, data: result, traceId });
+    return Response.json({ ok: true, data: { ...result, degraded }, traceId });
   } catch (error) {
     const code = errorCode(error);
     return Response.json({ ok: false, error: { code, message: "现场重建未完成，请重试", retryable: true }, traceId }, { status: 503 });
