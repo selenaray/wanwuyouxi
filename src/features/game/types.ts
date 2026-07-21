@@ -116,6 +116,7 @@ export type GameState = {
   caseId: string | null;
   caseData: PlayerCase | null;
   truth: string | null;
+  solutionAnswerIndex: number | null;
 };
 
 export type GameEvent =
@@ -128,6 +129,7 @@ export type GameEvent =
   | { type: "SCAN_FAILED"; errorCode: string }
   | { type: "GENERATION_STARTED"; imageId: string; jobId: string }
   | { type: "GENERATION_SUCCEEDED"; caseId: string; caseData: PlayerCase }
+  | { type: "STATELESS_GENERATION_SUCCEEDED"; caseData: V2PlayerCase; truth: string; correctAnswerIndex: number }
   | { type: "RETRY_SCAN" }
   | { type: "ENTER_SCENE"; now: number }
   | { type: "OPEN_CLUE"; clueId: string }

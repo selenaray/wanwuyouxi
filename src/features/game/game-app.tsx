@@ -16,16 +16,11 @@ import { TestimonySummaryScreen } from "@/components/testimony-summary-screen";
 
 import { createInitialState, transitionGame } from "./game-machine";
 import {
-  createClientRequestId,
-  createGenerationJob,
-  createSession,
   deleteImage,
+  generateStatelessCase,
   GameApiError,
-  getPlayerCase,
   revealCase,
   submitAnswer,
-  uploadImage,
-  waitForGenerationJob,
 } from "./api-client";
 import { prepareImageForUpload } from "./image-compression";
 import { SAMPLE_IMAGE_URL } from "./mock-case";
@@ -43,7 +38,6 @@ export function GameApp() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [answerBusy, setAnswerBusy] = useState(false);
   const generationRunning = useRef(false);
-  const resumableJobId = useRef<string | null>(null);
   const selectedObjectUrl = useRef<string | null>(null);
 
   useEffect(() => {
@@ -64,10 +58,6 @@ export function GameApp() {
     if (hydrated) saveGameState(state);
   }, [hydrated, state]);
 
-  useEffect(() => {
-    resumableJobId.current = state.jobId;
-  }, [state.jobId]);
-
   useEffect(() => () => {
     if (selectedObjectUrl.current && typeof URL.revokeObjectURL === "function") {
       URL.revokeObjectURL(selectedObjectUrl.current);
@@ -81,7 +71,7 @@ export function GameApp() {
       return () => window.clearTimeout(timer);
     }
     if (state.mode !== "live" || generationRunning.current) return;
-    if (!selectedFile && !resumableJobId.current) {
+    if (!selectedFile) {
       dispatch({ type: "SCAN_FAILED", errorCode: "PHOTO_UNAVAILABLE" });
       return;
     }
@@ -90,28 +80,15 @@ export function GameApp() {
     generationRunning.current = true;
     void (async () => {
       try {
-        let jobId = resumableJobId.current;
-        if (!jobId) {
-          await createSession();
-          const prepared = await prepareImageForUpload(selectedFile!);
-          const uploaded = await uploadImage(prepared);
-          const job = await createGenerationJob(uploaded.imageId, createClientRequestId());
-          jobId = job.jobId;
-          resumableJobId.current = jobId;
-          if (!cancelled) dispatch({ type: "GENERATION_STARTED", imageId: uploaded.imageId, jobId });
-        }
-
-        const completedJob = await waitForGenerationJob(jobId);
-        if (completedJob.status !== "SUCCEEDED" || !completedJob.caseId) {
-          throw new GameApiError(
-            completedJob.errorCode ?? completedJob.status,
-            "现场重建未完成",
-            completedJob.status === "RETRYABLE_FAILED",
-          );
-        }
-        const player = await getPlayerCase(completedJob.caseId);
+        const prepared = await prepareImageForUpload(selectedFile!);
+        const generated = await generateStatelessCase(prepared);
         if (!cancelled) {
-          dispatch({ type: "GENERATION_SUCCEEDED", caseId: completedJob.caseId, caseData: player.case });
+          dispatch({
+            type: "STATELESS_GENERATION_SUCCEEDED",
+            caseData: generated.case,
+            truth: generated.truth,
+            correctAnswerIndex: generated.correctAnswerIndex,
+          });
         }
       } catch (error) {
         if (!cancelled) {
@@ -127,13 +104,6 @@ export function GameApp() {
 
     return () => { cancelled = true; };
   }, [selectedFile, state.mode, state.screen]);
-
-  useEffect(() => {
-    if (!hydrated || state.mode !== "live" || !state.caseId || state.caseData) return;
-    void getPlayerCase(state.caseId)
-      .then((player) => dispatch({ type: "GENERATION_SUCCEEDED", caseId: state.caseId!, caseData: player.case }))
-      .catch(() => dispatch({ type: "SCAN_FAILED", errorCode: "GENERATION_FAILED" }));
-  }, [hydrated, state.caseData, state.caseId, state.mode]);
 
   const selectFile = (file: File) => {
     if (!ALLOWED_TYPES.includes(file.type)) {
@@ -160,7 +130,7 @@ export function GameApp() {
 
   const submitCurrentAnswer = async () => {
     if (state.selectedAnswerIndex === null || answerBusy) return;
-    if (state.mode === "sample") {
+    if (state.mode === "sample" || state.solutionAnswerIndex !== null) {
       dispatch({ type: "SUBMIT_ANSWER", answerIndex: state.selectedAnswerIndex, now: Date.now() });
       return;
     }
@@ -256,6 +226,11 @@ export function GameApp() {
       {state.screen === "deduction" && state.caseData && isV2PlayerCase(state.caseData) && (
         <TestimonySummaryScreen
           game={state.caseData}
+          selectedAnswerIndex={state.selectedAnswerIndex}
+          showHint={state.showHint}
+          busy={answerBusy}
+          onSelect={(answerIndex) => dispatch({ type: "SELECT_ANSWER", answerIndex })}
+          onSubmit={() => { void submitCurrentAnswer(); }}
           onBack={() => dispatch({ type: "RETURN_TO_SCENE" })}
         />
       )}
@@ -266,7 +241,6 @@ export function GameApp() {
         <ErrorScreen
           errorCode={state.errorCode}
           onRetry={() => {
-            resumableJobId.current = null;
             dispatch({ type: "RETRY_SCAN" });
           }}
         />

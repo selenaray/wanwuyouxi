@@ -2,6 +2,9 @@ import type { MockCase, V2PlayerCase } from "./types";
 
 export const SAMPLE_IMAGE_URL = "/sample-room.svg";
 
+export const SAMPLE_CORRECT_ANSWER_INDEX = 2;
+export const SAMPLE_TRUTH = "乔野移动杯子取走钥匙后又将其放回。杯底的新水印覆盖了原本连续的灰尘，因此‘杯子从始至终都在原位’与现场物证直接矛盾。";
+
 export const LEGACY_MOCK_CASE: MockCase = {
   title: "凌晨零点的失踪者",
   caseNumber: "CASE 0711",
