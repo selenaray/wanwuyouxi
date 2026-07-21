@@ -68,8 +68,8 @@ function normalizeUnitInterval(value: unknown) {
 function normalizeRadius(value: unknown) {
   const number = normalizeNumber(value);
   if (typeof number !== "number") return value;
-  if (number >= 0.04 && number <= 0.12) return number;
-  if (number >= 4 && number <= 12) return number / 100;
+  if (number > 0 && number <= 1) return Math.min(0.12, Math.max(0.04, number));
+  if (number > 1 && number <= 100) return Math.min(0.12, Math.max(0.04, number / 100));
   return value;
 }
 

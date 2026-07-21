@@ -3,7 +3,7 @@ export async function register() {
 
   const { readProductionConfig, readRuntimeLimits } = await import("@/server/config/production");
   const runtimeLimits = readRuntimeLimits(process.env);
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production" && process.env.VERCEL !== "1") {
     readProductionConfig(process.env);
   }
   if (process.env.ENABLE_INLINE_CLEANUP !== "1") return;

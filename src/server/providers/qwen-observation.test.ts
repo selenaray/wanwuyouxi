@@ -72,6 +72,25 @@ describe("QwenObservationProvider", () => {
     expect(observation.visualFacts[1]).toMatchObject({ confidence: 0.94, x: 0.51, y: 0.55 });
   });
 
+  it("clamps plausible model hotspot radii into the playable range", async () => {
+    const response = {
+      ...validObservation,
+      visualFacts: validObservation.visualFacts.map((fact, index) => index === 0
+        ? { ...fact, radius: 0.15 }
+        : fact),
+    };
+    const provider = new QwenObservationProvider({
+      transport: new CapturingTransport(JSON.stringify(response)),
+      model: "qwen3-vl-plus",
+      timeoutMs: 30_000,
+    });
+
+    const observation = await provider.observeScene(input);
+
+    expect(observation.decision).toBe("PASS");
+    expect(observation.visualFacts[0].radius).toBe(0.12);
+  });
+
   it.each([
     ["x", -1],
     ["x", 101],
@@ -79,8 +98,8 @@ describe("QwenObservationProvider", () => {
     ["y", 101],
     ["confidence", -1],
     ["confidence", 101],
-    ["radius", 0.03],
-    ["radius", 0.13],
+    ["radius", 0],
+    ["radius", 101],
   ] as const)("rejects an out-of-range visual fact %s value of %s", async (field, value) => {
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const response = {
