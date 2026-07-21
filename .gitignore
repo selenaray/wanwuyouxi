@@ -1,3 +1,13 @@
 .worktrees/
 .DS_Store
 .superpowers/
+.next/
+node_modules/
+coverage/
+playwright-report/
+test-results/
+.data/
+.env*
+!.env.example
+!deploy/.env.production.example
+*.log

@@ -1,0 +1,59 @@
+# 万物有戏
+
+把一张真实空间照片变成约 3 分钟的悬疑密室解谜：AI 先识别三个可见物证，再生成三名嫌疑人与唯一可推理矛盾。玩家探索物证、解锁角色卡，并在后续推理阶段锁定答案。
+
+## MVP 已实现
+
+- 移动端优先的完整游戏流程，并保留无需模型额度的稳定示例案件
+- 匿名会话、私有图片上传、异步生成任务和刷新恢复
+- 通义千问只负责现场观察，DeepSeek 负责编译案件并独立检查唯一矛盾
+- 三件真实物证逐一解锁三名嫌疑人，角色使用零运行成本的本地预设立绘
+- 服务端判题与真相保护，答案揭晓前不会下发到浏览器
+- 图片主动删除、24 小时自动清理和不含图片/剧情的质量指标
+- 80 项以上自动化测试、移动端端到端测试和生产构建验证
+
+## 本地体验
+
+需要 Node.js 20+ 和 pnpm。首次运行：
+
+```bash
+pnpm install
+cp .env.example .env.local
+pnpm dev --hostname 127.0.0.1 --port 3100
+```
+
+访问 `http://127.0.0.1:3100`，点击“体验示例案件”不需要任何 API Key。
+
+真实照片生成还需要在另外两个终端运行：
+
+```bash
+pnpm worker
+pnpm worker:cleanup
+```
+
+详细配置、安全说明和常见问题见 [本地后端运行指南](docs/development/backend-local-setup.md)。V2 数据与后续审问边界见 [V2 Factbook 接口约定](docs/development/v2-factbook-contract.md)。评估方式见 [MVP 质量评分表](docs/evaluation/backend-mvp-scorecard.md)。
+
+## 验证
+
+```bash
+pnpm lint
+pnpm test:run
+pnpm build
+pnpm test:e2e
+```
+
+真实模型测试默认跳过，只有明确设置 `RUN_LIVE_AI_TESTS=1` 才会产生模型调用费用。
+
+## 正式部署
+
+作品集低流量阶段采用香港 ECS 单实例：应用和 PGlite 使用持久化云盘卷，照片进入私有 OSS，Caddy 提供自动 HTTPS。该方案不能运行多个应用副本；需要扩容时先迁移到 RDS PostgreSQL。
+
+完整的服务器准备、配置、健康检查、备份、更新和回滚步骤见 [阿里云香港 ECS 上线指南](docs/deployment/aliyun-hk-ecs.md)。真实 Key 只填写在服务器的 `deploy/.env.production`，不得提交到 Git。
+
+## 隐私边界
+
+- 图片不进入 `public/`，本地文件夹和阿里云 OSS 均按私有对象处理。
+- DeepSeek 只接收结构化现场/剧情语义，不接收原图、图片地址、会话或用户标识；独立 judge 也不接收嫌疑人的私密行动与可用事实权限。
+- 浏览器只保存任务和案件 ID，不保存照片地址、案件真相或正确答案。
+- 指标仅允许状态、耗时、token、成本和错误码；图片地址与剧情字段会被拒绝。
+- 用户重玩时立即请求删图，清理任务会继续处理失败重试和到期图片。
