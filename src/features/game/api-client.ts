@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { PlayerCase } from "./types";
+import type { PlayerCase, V2PlayerCase } from "./types";
 
 export class GameApiError extends Error {
   constructor(
@@ -129,6 +129,20 @@ async function request<T>(url: string, init: RequestInit, schema: z.ZodType<T>):
 
 export function createSession() {
   return request("/api/sessions", { method: "POST" }, z.object({ sessionPublicId: z.string(), expiresAt: z.string() }));
+}
+
+export function generateStatelessCase(file: File) {
+  const form = new FormData();
+  form.set("image", file);
+  return request<{
+    case: V2PlayerCase;
+    correctAnswerIndex: number;
+    truth: string;
+  }>("/api/demo-generation", { method: "POST", body: form }, z.object({
+    case: V2PlayerCaseSchema,
+    correctAnswerIndex: z.number().int().min(0).max(2),
+    truth: z.string().min(1),
+  }));
 }
 
 export function uploadImage(file: File) {

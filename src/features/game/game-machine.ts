@@ -1,4 +1,4 @@
-import { LEGACY_MOCK_CASE, MOCK_CASE, SAMPLE_IMAGE_URL } from "./mock-case";
+import { LEGACY_MOCK_CASE, MOCK_CASE, SAMPLE_CORRECT_ANSWER_INDEX, SAMPLE_IMAGE_URL, SAMPLE_TRUTH } from "./mock-case";
 import { isV2PlayerCase, type GameEvent, type GameState } from "./types";
 
 export function createInitialState(): GameState {
@@ -25,6 +25,7 @@ export function createInitialState(): GameState {
     caseId: null,
     caseData: null,
     truth: null,
+    solutionAnswerIndex: null,
   };
 }
 
@@ -43,7 +44,8 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         errorCode: null,
         mode: "sample",
         caseData: MOCK_CASE,
-        truth: null,
+        solutionAnswerIndex: SAMPLE_CORRECT_ANSWER_INDEX,
+        truth: SAMPLE_TRUTH,
         openedClueIds: [],
         activeClueId: null,
         openedEvidenceIds: [],
@@ -62,6 +64,7 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         caseId: null,
         caseData: null,
         truth: null,
+        solutionAnswerIndex: null,
         openedClueIds: [],
         activeClueId: null,
         openedEvidenceIds: [],
@@ -82,6 +85,15 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         screen: "briefing",
         caseId: event.caseId,
         caseData: event.caseData,
+        errorCode: null,
+      };
+    case "STATELESS_GENERATION_SUCCEEDED":
+      return {
+        ...state,
+        screen: "briefing",
+        caseData: event.caseData,
+        truth: event.truth,
+        solutionAnswerIndex: event.correctAnswerIndex,
         errorCode: null,
       };
     case "RETRY_SCAN":
@@ -165,11 +177,14 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         ? { ...state, selectedAnswerIndex: event.answerIndex }
         : state;
     case "SUBMIT_ANSWER": {
-      if (state.screen !== "deduction" || state.openedClueIds.length !== 3 || state.attemptCount >= 2) {
+      const ready = state.caseData && isV2PlayerCase(state.caseData)
+        ? state.openedEvidenceIds.length === 3
+        : state.openedClueIds.length === 3;
+      if (state.screen !== "deduction" || !ready || state.attemptCount >= 2) {
         return state;
       }
       const attemptCount = state.attemptCount + 1;
-      const correct = event.answerIndex === LEGACY_MOCK_CASE.correctAnswerIndex;
+      const correct = event.answerIndex === (state.solutionAnswerIndex ?? LEGACY_MOCK_CASE.correctAnswerIndex);
       if (correct || attemptCount === 2) {
         return {
           ...state,
