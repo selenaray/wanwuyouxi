@@ -131,9 +131,17 @@ export function createSession() {
   return request("/api/sessions", { method: "POST" }, z.object({ sessionPublicId: z.string(), expiresAt: z.string() }));
 }
 
-export function generateStatelessCase(file: File) {
+export async function generateStatelessCase(file: File) {
   const form = new FormData();
   form.set("image", file);
+  try {
+    const bitmap = await createImageBitmap(file);
+    form.set("width", String(bitmap.width));
+    form.set("height", String(bitmap.height));
+    bitmap.close();
+  } catch {
+    // The server keeps a safe fallback for HEIC browsers without bitmap decoding.
+  }
   return request<{
     case: V2PlayerCase;
     correctAnswerIndex: number;

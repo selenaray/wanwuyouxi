@@ -1,5 +1,3 @@
-import sharp from "sharp";
-
 import { generateStatelessCase } from "@/server/generation/stateless";
 import {
   FakeCaseFactbookCompiler,
@@ -29,14 +27,15 @@ export async function POST(request: Request) {
     }
 
     const bytes = Buffer.from(await image.arrayBuffer());
-    const metadata = await sharp(bytes).metadata();
-    if (!metadata.width || !metadata.height) throw new Error("INVALID_IMAGE");
+    const width = Number(form.get("width")) || 1200;
+    const height = Number(form.get("height")) || 900;
+    if (width < 1 || height < 1 || width > 10000 || height > 10000) throw new Error("INVALID_IMAGE");
     const imageUrl = `data:${image.type || "image/jpeg"};base64,${bytes.toString("base64")}`;
     const hasLiveModels = Boolean(process.env.QWEN_API_KEY && process.env.DEEPSEEK_API_KEY);
     const result = await generateStatelessCase({
       imageUrl,
-      imageWidth: metadata.width,
-      imageHeight: metadata.height,
+      imageWidth: width,
+      imageHeight: height,
       traceId,
     }, {
       vision: hasLiveModels ? createQwenObservationProviderFromEnv() : new FakeVisionObservationProvider(),
