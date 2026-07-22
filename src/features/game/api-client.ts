@@ -150,10 +150,14 @@ export async function generateStatelessCase(file: File) {
     case: V2PlayerCase;
     correctAnswerIndex: number;
     truth: string;
+    degraded?: boolean;
+    degradationReason?: string;
   }>("/api/demo-generation", { method: "POST", body: form }, z.object({
     case: V2PlayerCaseSchema,
     correctAnswerIndex: z.number().int().min(0).max(2),
     truth: z.string().min(1),
+    degraded: z.boolean().optional(),
+    degradationReason: z.string().optional(),
   }));
 }
 

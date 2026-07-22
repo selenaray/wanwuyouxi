@@ -132,7 +132,7 @@ export type GameEvent =
   | { type: "SELECT_ANSWER"; answerIndex: number }
   | { type: "SUBMIT_ANSWER"; answerIndex: number; now: number }
   | { type: "ANSWER_RESPONSE"; correct: boolean; completed: boolean; attemptCount: number; now: number }
-  | { type: "REVEAL_LOADED"; truth: string; firstAnswerCorrect: boolean | null; now: number }
+  | { type: "REVEAL_LOADED"; truth: string; correctAnswerIndex: number; firstAnswerCorrect: boolean | null; now: number }
   | { type: "REPLAY" };
 
 export type MockCase = V1PlayerCase & {

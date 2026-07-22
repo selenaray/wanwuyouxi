@@ -15,6 +15,7 @@ vi.mock("@/server/providers", () => ({
   FakeVisionObservationProvider: vi.fn(() => ({ kind: "fake-vision" })),
   FakeCaseFactbookCompiler: vi.fn(() => ({ kind: "fake-compiler" })),
   FakeCaseFactbookJudge: vi.fn(() => ({ kind: "fake-judge" })),
+  ObservationFallbackFactbookCompiler: vi.fn(() => ({ kind: "observation-fallback-compiler" })),
 }));
 
 describe("POST /api/demo-generation", () => {
@@ -23,7 +24,7 @@ describe("POST /api/demo-generation", () => {
     vi.clearAllMocks();
   });
 
-  it("does not silently return a fake case when live generation fails", async () => {
+  it("returns a marked fallback case when live generation fails", async () => {
     vi.stubEnv("QWEN_API_KEY", "qwen-key");
     vi.stubEnv("DEEPSEEK_API_KEY", "deepseek-key");
     const { generateStatelessCase } = await import("@/server/generation/stateless");
@@ -52,9 +53,10 @@ describe("POST /api/demo-generation", () => {
     const response = await POST(new Request("http://test/api/demo-generation", { method: "POST", body: form }));
     const body = await response.json();
 
-    expect(response.status).toBe(503);
-    expect(body.ok).toBe(false);
-    expect(body.error.code).toBe("QWEN_OBSERVATION_SCHEMA_INVALID");
-    expect(generateStatelessCase).toHaveBeenCalledTimes(1);
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.degraded).toBe(true);
+    expect(body.data.degradationReason).toBe("QWEN_OBSERVATION_SCHEMA_INVALID");
+    expect(generateStatelessCase).toHaveBeenCalledTimes(2);
   });
 });

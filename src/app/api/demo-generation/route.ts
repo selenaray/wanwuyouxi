@@ -3,6 +3,7 @@ import {
   FakeCaseFactbookCompiler,
   FakeCaseFactbookJudge,
   FakeVisionObservationProvider,
+  ObservationFallbackFactbookCompiler,
   createDeepSeekFactbookCompilerFromEnv,
   createDeepSeekFactbookJudgeFromEnv,
   createQwenObservationProviderFromEnv,
@@ -39,14 +40,22 @@ export async function POST(request: Request) {
         vision: hasLiveModels ? createQwenObservationProviderFromEnv() : new FakeVisionObservationProvider(),
         compiler: hasLiveModels ? createDeepSeekFactbookCompilerFromEnv() : new FakeCaseFactbookCompiler(),
         judge: hasLiveModels ? createDeepSeekFactbookJudgeFromEnv() : new FakeCaseFactbookJudge(),
+        fallbackCompiler: hasLiveModels ? new ObservationFallbackFactbookCompiler() : undefined,
+        fallbackJudge: hasLiveModels ? new FakeCaseFactbookJudge() : undefined,
       });
     } catch (error) {
       if (!hasLiveModels) throw error;
-      console.warn("LIVE_GENERATION_FAILED", errorCode(error));
-      throw error;
+      const code = errorCode(error);
+      console.warn("LIVE_GENERATION_FALLBACK", code);
+      result = await generateStatelessCase(input, {
+        vision: new FakeVisionObservationProvider(),
+        compiler: new FakeCaseFactbookCompiler(),
+        judge: new FakeCaseFactbookJudge(),
+      });
+      result = { ...result, degraded: true, degradationReason: code };
     }
 
-    return Response.json({ ok: true, data: { ...result, degraded: false }, traceId });
+    return Response.json({ ok: true, data: result, traceId });
   } catch (error) {
     const code = errorCode(error);
     return Response.json({ ok: false, error: { code, message: "现场重建未完成，请重试", retryable: true }, traceId }, { status: 503 });

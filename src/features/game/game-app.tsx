@@ -144,6 +144,7 @@ export function GameApp() {
         dispatch({
           type: "REVEAL_LOADED",
           truth: reveal.truth,
+          correctAnswerIndex: reveal.correctAnswerIndex,
           firstAnswerCorrect: reveal.firstAnswerCorrect,
           now: Date.now(),
         });

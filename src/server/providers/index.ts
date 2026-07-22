@@ -4,6 +4,7 @@ export {
   FakeCaseJudgeProvider,
   FakeVisionCaseProvider,
   FakeVisionObservationProvider,
+  ObservationFallbackFactbookCompiler,
 } from "./fake";
 export { createDeepSeekCaseJudgeFromEnv, DeepSeekCaseJudge } from "./deepseek";
 export {

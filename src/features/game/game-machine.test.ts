@@ -139,11 +139,13 @@ describe("game state machine", () => {
     state = transitionGame(state, {
       type: "REVEAL_LOADED",
       truth: "真相",
+      correctAnswerIndex: 2,
       firstAnswerCorrect: true,
       now: 2000,
     });
     expect(state.screen).toBe("result");
     expect(state.truth).toBe("真相");
+    expect(state.solutionAnswerIndex).toBe(2);
     expect(state.revealedAt).toBe(2000);
   });
 

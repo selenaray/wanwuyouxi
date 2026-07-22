@@ -223,6 +223,7 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         ...state,
         screen: "result",
         truth: event.truth,
+        solutionAnswerIndex: event.correctAnswerIndex,
         firstAnswerCorrect: event.firstAnswerCorrect,
         revealedAt: event.now,
       };
