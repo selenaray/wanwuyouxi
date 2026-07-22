@@ -48,6 +48,8 @@ type QwenObservationProviderOptions = {
   timeoutMs: number;
 };
 
+const DEFAULT_QWEN_OBSERVATION_TIMEOUT_MS = 75_000;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -73,6 +75,10 @@ function normalizeRadius(value: unknown) {
   return value;
 }
 
+function normalizeVisualFactId(index: number) {
+  return `vf-${index + 1}`;
+}
+
 function normalizeObservation(value: unknown): unknown {
   if (!isRecord(value)) return value;
 
@@ -83,10 +89,11 @@ function normalizeObservation(value: unknown): unknown {
       ? { reasonCode: value.reasonCode.toUpperCase() }
       : {}),
     visualFacts: Array.isArray(value.visualFacts)
-      ? value.visualFacts.map((fact) => {
+      ? value.visualFacts.map((fact, index) => {
         if (!isRecord(fact)) return fact;
         return {
           ...fact,
+          id: normalizeVisualFactId(index),
           x: normalizeUnitInterval(fact.x),
           y: normalizeUnitInterval(fact.y),
           radius: normalizeRadius(fact.radius),
@@ -147,6 +154,13 @@ export class QwenObservationProvider implements VisionObservationProvider {
   }
 }
 
+function readGenerationTimeoutMs(value: string | undefined) {
+  const parsed = typeof value === "string" && value.trim() !== "" ? Number(value) : NaN;
+  return Number.isFinite(parsed) && parsed >= 10_000
+    ? parsed
+    : DEFAULT_QWEN_OBSERVATION_TIMEOUT_MS;
+}
+
 export function createQwenObservationProviderFromEnv() {
   const apiKey = process.env.QWEN_API_KEY;
   if (!apiKey) throw new Error("QWEN_API_KEY_MISSING");
@@ -156,6 +170,6 @@ export function createQwenObservationProviderFromEnv() {
       process.env.QWEN_BASE_URL ?? "https://dashscope.aliyuncs.com/compatible-mode/v1",
     ),
     model: process.env.QWEN_VISION_MODEL ?? "qwen3-vl-plus",
-    timeoutMs: Number(process.env.GENERATION_TIMEOUT_MS ?? 30_000),
+    timeoutMs: readGenerationTimeoutMs(process.env.GENERATION_TIMEOUT_MS),
   });
 }

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { validObservation } from "@/server/cases/v2-contracts.fixture";
 
 import {
+  createQwenObservationProviderFromEnv,
   QwenObservationProvider,
   type QwenObservationRequest,
   type QwenObservationTransport,
@@ -89,6 +90,36 @@ describe("QwenObservationProvider", () => {
 
     expect(observation.decision).toBe("PASS");
     expect(observation.visualFacts[0].radius).toBe(0.12);
+  });
+
+  it("rewrites model-generated visual fact ids into stable ids", async () => {
+    const response = {
+      ...validObservation,
+      visualFacts: validObservation.visualFacts.map((fact, index) => ({
+        ...fact,
+        id: ["台灯", "book 2", "杯子#3"][index],
+      })),
+    };
+    const provider = new QwenObservationProvider({
+      transport: new CapturingTransport(JSON.stringify(response)),
+      model: "qwen3-vl-plus",
+      timeoutMs: 30_000,
+    });
+
+    const observation = await provider.observeScene(input);
+
+    expect(observation.decision).toBe("PASS");
+    expect(observation.visualFacts.map((fact) => fact.id)).toEqual(["vf-1", "vf-2", "vf-3"]);
+  });
+
+  it("uses a longer default timeout when the live timeout env is missing or empty", () => {
+    vi.stubEnv("QWEN_API_KEY", "test-key");
+    vi.stubEnv("GENERATION_TIMEOUT_MS", "");
+
+    const provider = createQwenObservationProviderFromEnv();
+
+    expect((provider as unknown as { options: { timeoutMs: number } }).options.timeoutMs).toBe(75_000);
+    vi.unstubAllEnvs();
   });
 
   it.each([
