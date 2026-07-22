@@ -24,7 +24,7 @@ import {
 } from "./api-client";
 import { prepareImageForUpload } from "./image-compression";
 import { SAMPLE_IMAGE_URL } from "./mock-case";
-import { loadGameState, saveGameState } from "./persistence";
+import { saveGameState } from "./persistence";
 import { isV2PlayerCase } from "./types";
 
 const MAX_FILE_BYTES = 15 * 1024 * 1024;
@@ -42,13 +42,6 @@ export function GameApp() {
 
   useEffect(() => {
     const restoreTimer = window.setTimeout(() => {
-      const restored = loadGameState();
-      if (
-        restored.selectedImageUrl === SAMPLE_IMAGE_URL ||
-        (restored.mode === "live" && Boolean(restored.jobId || restored.caseId))
-      ) {
-        dispatch({ type: "HYDRATE", state: restored });
-      }
       setHydrated(true);
     }, 0);
     return () => window.clearTimeout(restoreTimer);

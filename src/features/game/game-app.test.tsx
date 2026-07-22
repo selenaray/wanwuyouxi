@@ -1,7 +1,10 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createInitialState } from "./game-machine";
 import { GameApp } from "./game-app";
+import { LEGACY_MOCK_CASE, SAMPLE_IMAGE_URL } from "./mock-case";
+import { saveGameState } from "./persistence";
 
 describe("GameApp", () => {
   beforeEach(() => {
@@ -41,6 +44,21 @@ describe("GameApp", () => {
 
     expect(screen.getByText("room.jpg")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "使用这张照片" })).toBeInTheDocument();
+  });
+
+  it("starts on the home screen even when previous progress exists", () => {
+    saveGameState({
+      ...createInitialState(),
+      screen: "briefing",
+      selectedImageUrl: SAMPLE_IMAGE_URL,
+      selectedImageName: "示例现场",
+      caseData: LEGACY_MOCK_CASE,
+    });
+
+    renderApp();
+
+    expect(screen.getByRole("button", { name: "开始扫描现场" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "进入现场" })).not.toBeInTheDocument();
   });
 
   it("accepts an iPhone HEIF photo for preview", () => {
