@@ -1,21 +1,10 @@
 import { z } from "zod";
 
+import { PORTRAIT_KEYS, isRosterSuspect } from "@/features/game/suspect-roster";
+
 const StableIdSchema = z.string().min(1).max(40).regex(/^[a-z0-9-]+$/);
 
-export const PORTRAIT_KEYS = [
-  "noir-01",
-  "noir-02",
-  "noir-03",
-  "noir-04",
-  "noir-05",
-  "noir-06",
-  "noir-07",
-  "noir-08",
-  "noir-09",
-  "noir-10",
-  "noir-11",
-  "noir-12",
-] as const;
+export { PORTRAIT_KEYS };
 
 export const PortraitKeySchema = z.enum(PORTRAIT_KEYS);
 
@@ -78,6 +67,8 @@ export const PrivateSuspectSchema = z
   .object({
     id: StableIdSchema,
     name: z.string().min(2).max(12),
+    gender: z.enum(["男", "女"]),
+    age: z.number().int().min(12).max(80),
     identity: z.string().min(2).max(24),
     relation: z.string().min(4).max(60),
     personalityTags: z.tuple([
@@ -89,7 +80,16 @@ export const PrivateSuspectSchema = z
     privateAction: z.string().min(6).max(120),
     allowedFactIds: z.array(StableIdSchema).min(1).max(12),
   })
-  .strict();
+  .strict()
+  .superRefine((suspect, context) => {
+    if (!isRosterSuspect(suspect)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Suspect must be selected from the configured roster",
+        path: ["name"],
+      });
+    }
+  });
 
 const EvidenceTupleSchema = z
   .tuple([EvidenceSchema, EvidenceSchema, EvidenceSchema])
@@ -187,6 +187,28 @@ type V2PlayerClaim = Omit<
   "factRefs" | "evidenceRefs"
 >;
 
+function toPublicSuspect(suspect: V2PrivateCase["suspects"][number]): V2PlayerSuspect {
+  return {
+    id: suspect.id,
+    name: suspect.name,
+    gender: suspect.gender,
+    age: suspect.age,
+    identity: suspect.identity,
+    relation: suspect.relation,
+    personalityTags: suspect.personalityTags,
+    portraitKey: suspect.portraitKey,
+    initialTestimony: suspect.initialTestimony,
+  };
+}
+
+function toPublicClaim(claim: V2PrivateCase["claims"][number]): V2PlayerClaim {
+  return {
+    id: claim.id,
+    suspectId: claim.suspectId,
+    text: claim.text,
+  };
+}
+
 export function toV2PlayerCase(value: V2PrivateCase) {
   return {
     version: value.version,
@@ -196,13 +218,16 @@ export function toV2PlayerCase(value: V2PrivateCase) {
     objective: value.objective,
     interactionMode: value.interactionMode,
     evidence: value.evidence,
-    suspects: value.suspects.map(
-      ({ privateAction: _privateAction, allowedFactIds: _allowedFactIds, ...suspect }) =>
-        suspect,
-    ) as [V2PlayerSuspect, V2PlayerSuspect, V2PlayerSuspect],
-    claims: value.claims.map(
-      ({ factRefs: _factRefs, evidenceRefs: _evidenceRefs, ...claim }) => claim,
-    ) as [V2PlayerClaim, V2PlayerClaim, V2PlayerClaim],
+    suspects: value.suspects.map(toPublicSuspect) as [
+      V2PlayerSuspect,
+      V2PlayerSuspect,
+      V2PlayerSuspect,
+    ],
+    claims: value.claims.map(toPublicClaim) as [
+      V2PlayerClaim,
+      V2PlayerClaim,
+      V2PlayerClaim,
+    ],
     wrongAnswerHint: value.wrongAnswerHint,
   };
 }

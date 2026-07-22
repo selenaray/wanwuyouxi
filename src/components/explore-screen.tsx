@@ -112,7 +112,7 @@ export function ExploreScreen({
         </button>
       </div>
       {activeClue && <ClueSheet clue={activeClue} onClose={onCloseClue} />}
-      {activeSuspect && <SuspectSheet suspect={activeSuspect} onClose={onCloseSuspect} />}
+      {v2 && activeSuspect && <SuspectSheet game={game} suspect={activeSuspect} onClose={onCloseSuspect} />}
     </div>
   );
 }

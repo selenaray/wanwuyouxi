@@ -1,3 +1,5 @@
+import type { PortraitKey } from "./suspect-roster";
+
 export type GameScreen =
   | "home"
   | "capture"
@@ -7,20 +9,6 @@ export type GameScreen =
   | "deduction"
   | "result"
   | "error";
-
-export type PortraitKey =
-  | "noir-01"
-  | "noir-02"
-  | "noir-03"
-  | "noir-04"
-  | "noir-05"
-  | "noir-06"
-  | "noir-07"
-  | "noir-08"
-  | "noir-09"
-  | "noir-10"
-  | "noir-11"
-  | "noir-12";
 
 export type GameClue = {
   id: string;
@@ -61,6 +49,8 @@ export type GameEvidence = {
 export type PublicSuspect = {
   id: string;
   name: string;
+  gender: "男" | "女";
+  age: number;
   identity: string;
   relation: string;
   personalityTags: [string, string];

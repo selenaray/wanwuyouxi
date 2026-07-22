@@ -5,6 +5,7 @@ import {
   type V2PrivateCase,
   type VisionObservation,
 } from "@/server/cases/v2-contracts";
+import { SUSPECT_ROSTER } from "@/features/game/suspect-roster";
 
 import type { DeepSeekRequest, DeepSeekTransport } from "./deepseek";
 import {
@@ -73,6 +74,8 @@ export function semanticV2Case(game: V2PrivateCase) {
       id: suspect.id,
       name: suspect.name,
       identity: suspect.identity,
+      gender: suspect.gender,
+      age: suspect.age,
       relation: suspect.relation,
       personalityTags: suspect.personalityTags,
       portraitKey: suspect.portraitKey,
@@ -323,7 +326,7 @@ export class DeepSeekFactbookCompiler implements CaseFactbookCompiler {
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: DEEPSEEK_COMPILER_SYSTEM_PROMPT },
-        { role: "user", content: JSON.stringify({ observation: input.observation }) },
+        { role: "user", content: JSON.stringify({ observation: input.observation, suspectRoster: SUSPECT_ROSTER }) },
       ],
     });
     return this.parseFactbook(response.content, input.observation.visualFacts);

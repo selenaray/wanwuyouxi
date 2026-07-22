@@ -58,7 +58,7 @@ describe("validateV2Case", () => {
 
   it.each([
     ["duplicate evidence ids", mutate({ evidence1Id: "ev-lamp" }), "DUPLICATE_EVIDENCE"],
-    ["duplicate suspects", mutate({ suspect1Id: "su-lin" }), "DUPLICATE_SUSPECT"],
+    ["duplicate suspects", mutate({ suspect1Id: "su-shen" }), "DUPLICATE_SUSPECT"],
     ["duplicate portraits", mutate({ suspect1Portrait: "noir-01" }), "DUPLICATE_PORTRAIT"],
     ["unknown visual fact", mutate({ evidence0VisualFactId: "vf-missing" }), "EVIDENCE_NOT_VISIBLE"],
     ["coordinate drift", mutate({ evidence0X: 0.9 }), "EVIDENCE_COORDINATE_DRIFT"],

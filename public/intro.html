@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>万物有戏｜AI Native 悬疑互动内容 Demo</title>
+    <meta
+      name="description"
+      content="上传一张现实空间照片，让 AI 把身边物品变成一场可以探索、审问和推理的悬疑案件。"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #06070a;
+        --ink: #f8f0e8;
+        --muted: #b7aaa4;
+        --soft: #766c69;
+        --line: rgba(255, 255, 255, 0.16);
+        --red: #ef646d;
+        --gold: #e6bb7a;
+        --green: #86c7a6;
+        --panel: rgba(18, 19, 24, 0.78);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 18% 12%, rgba(239, 100, 109, 0.18), transparent 32rem),
+          radial-gradient(circle at 84% 18%, rgba(134, 199, 166, 0.12), transparent 30rem),
+          linear-gradient(180deg, #09090d 0%, #06070a 52%, #0d0b0c 100%);
+        color: var(--ink);
+        font-family: "SF Pro Display", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      }
+
+      a { color: inherit; text-decoration: none; }
+      .noise {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.28;
+        background-image:
+          linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+        background-size: 34px 34px;
+        mask-image: linear-gradient(180deg, #000, transparent 78%);
+      }
+
+      .nav {
+        position: fixed;
+        z-index: 20;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px clamp(18px, 5vw, 64px);
+        backdrop-filter: blur(18px);
+        background: linear-gradient(180deg, rgba(6,7,10,0.82), rgba(6,7,10,0.18));
+      }
+      .brand { display: flex; gap: 10px; align-items: center; font-weight: 800; letter-spacing: 0.08em; }
+      .brand i {
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        color: var(--red);
+        font-family: Georgia, serif;
+        font-style: italic;
+      }
+      .nav-links { display: flex; gap: 10px; }
+      .btn {
+        min-height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 0 16px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255,255,255,0.06);
+        font-weight: 800;
+        font-size: 13px;
+      }
+      .btn.primary {
+        border-color: rgba(239,100,109,0.5);
+        background: linear-gradient(135deg, #f06b72, #9d2230);
+        box-shadow: 0 18px 48px rgba(157,34,48,0.28);
+      }
+
+      .hero {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(300px, 440px);
+        gap: clamp(26px, 5vw, 72px);
+        align-items: center;
+        padding: 96px clamp(18px, 5vw, 72px) 72px;
+      }
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--red);
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 0;
+        max-width: 760px;
+        font: clamp(58px, 10vw, 132px) / 0.92 Georgia, "Songti SC", serif;
+        letter-spacing: 0;
+      }
+      .lead {
+        max-width: 680px;
+        margin: 24px 0 0;
+        color: var(--muted);
+        font-size: clamp(18px, 2vw, 24px);
+        line-height: 1.72;
+      }
+      .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        max-width: 620px;
+        margin-top: 42px;
+      }
+      .metric {
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255,255,255,0.05);
+      }
+      .metric strong { display: block; font: 28px Georgia, serif; }
+      .metric span { color: var(--soft); font-size: 12px; }
+
+      .phone {
+        position: relative;
+        min-height: 640px;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 42px;
+        overflow: hidden;
+        background: #08090b;
+        box-shadow: 0 50px 120px rgba(0,0,0,0.58);
+      }
+      .phone::before {
+        content: "";
+        position: absolute;
+        z-index: 3;
+        top: 16px;
+        left: 50%;
+        width: 96px;
+        height: 22px;
+        transform: translateX(-50%);
+        border-radius: 999px;
+        background: #050507;
+      }
+      .scene {
+        position: absolute;
+        inset: 0;
+        background: url("/sample-room.svg") center / cover no-repeat;
+        filter: saturate(0.82) contrast(1.08);
+      }
+      .scene::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 54% 42%, transparent, rgba(0,0,0,0.38) 54%, rgba(0,0,0,0.76)),
+          linear-gradient(180deg, rgba(0,0,0,0.16), #08090b 78%);
+      }
+      .hotspot {
+        position: absolute;
+        z-index: 4;
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        border: 1px solid rgba(239,100,109,0.8);
+        animation: pulse 2.4s ease-out infinite;
+      }
+      .hotspot::after {
+        content: "";
+        position: absolute;
+        inset: 21px;
+        border-radius: 50%;
+        background: var(--red);
+        box-shadow: 0 0 22px var(--red);
+      }
+      .h1 { left: 22%; top: 38%; }
+      .h2 { left: 55%; top: 56%; animation-delay: 0.35s; }
+      .h3 { right: 14%; top: 47%; animation-delay: 0.7s; }
+      .case-card {
+        position: absolute;
+        z-index: 5;
+        left: 22px;
+        right: 22px;
+        bottom: 22px;
+        padding: 20px;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: rgba(10,11,14,0.88);
+        backdrop-filter: blur(16px);
+      }
+      .case-card h2 { margin: 6px 0 8px; font: 28px Georgia, "Songti SC", serif; }
+      .case-card p { margin: 0; color: var(--muted); line-height: 1.6; font-size: 14px; }
+
+      .section {
+        padding: 74px clamp(18px, 5vw, 72px);
+        border-top: 1px solid rgba(255,255,255,0.1);
+      }
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        align-items: end;
+        margin-bottom: 28px;
+      }
+      .section h2 {
+        margin: 0;
+        max-width: 760px;
+        font: clamp(34px, 5vw, 64px) / 1.04 Georgia, "Songti SC", serif;
+      }
+      .section-head p {
+        max-width: 430px;
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+      .tile {
+        min-height: 190px;
+        padding: 20px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+      .tile b { display: block; margin-bottom: 28px; color: var(--gold); font: 13px monospace; }
+      .tile h3 { margin: 0 0 10px; font-size: 20px; }
+      .tile p { margin: 0; color: var(--muted); line-height: 1.65; font-size: 14px; }
+
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 10px;
+      }
+      .step {
+        position: relative;
+        min-height: 210px;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: linear-gradient(180deg, rgba(239,100,109,0.11), rgba(255,255,255,0.045));
+      }
+      .step span { color: var(--red); font: 12px monospace; }
+      .step h3 { margin: 44px 0 12px; font-size: 22px; }
+      .step p { margin: 0; color: var(--muted); line-height: 1.62; font-size: 14px; }
+
+      .roster {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 10px;
+      }
+      .person {
+        min-height: 188px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: #121318;
+      }
+      .person img {
+        width: 100%;
+        height: 128px;
+        object-fit: cover;
+        object-position: 50% 22%;
+        display: block;
+        filter: saturate(0.9);
+      }
+      .person strong { display: block; padding: 10px 10px 2px; font-size: 14px; }
+      .person small { display: block; padding: 0 10px 10px; color: var(--soft); font-size: 11px; }
+
+      .closing {
+        min-height: 54vh;
+        display: grid;
+        place-items: center;
+        text-align: center;
+      }
+      .closing-inner { max-width: 820px; }
+      .closing h2 { font-size: clamp(38px, 6vw, 78px); }
+      .closing p { margin: 18px auto 30px; max-width: 620px; color: var(--muted); line-height: 1.72; font-size: 18px; }
+
+      @keyframes pulse {
+        0% { transform: scale(0.82); opacity: 1; }
+        100% { transform: scale(1.28); opacity: 0.2; }
+      }
+
+      @media (max-width: 980px) {
+        .hero { grid-template-columns: 1fr; }
+        .phone { min-height: 560px; max-width: 420px; margin: 0 auto; width: 100%; }
+        .grid, .flow { grid-template-columns: repeat(2, 1fr); }
+        .roster { grid-template-columns: repeat(3, 1fr); }
+        .section-head { display: block; }
+        .section-head p { margin-top: 14px; }
+      }
+      @media (max-width: 640px) {
+        .nav { position: sticky; padding: 14px 16px; }
+        .brand span { font-size: 13px; }
+        .nav-links { gap: 6px; }
+        .nav-links .btn:first-child { display: none; }
+        .hero { min-height: auto; padding: 48px 16px; }
+        h1 { font-size: 62px; }
+        .lead { font-size: 16px; }
+        .metrics, .grid, .flow { grid-template-columns: 1fr; }
+        .roster { grid-template-columns: repeat(2, 1fr); }
+        .section { padding: 52px 16px; }
+        .phone { min-height: 520px; border-radius: 32px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="noise"></div>
+    <nav class="nav">
+      <a class="brand" href="/"><i>W</i><span>万物有戏</span></a>
+      <div class="nav-links">
+        <a class="btn" href="https://github.com/selenaray/wanwuyouxi">GitHub</a>
+        <a class="btn primary" href="/">进入 Demo</a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div>
+        <p class="eyebrow">AI NATIVE CONTENT EXPERIENCE</p>
+        <h1>让现实空间，变成一场悬疑游戏。</h1>
+        <p class="lead">
+          用户上传一张桌面、房间或咖啡馆角落。AI 识别照片里的真实物品，
+          将它们编译成物证、嫌疑人和证词矛盾，生成一局可探索、可审问、可推理的个性化案件。
+        </p>
+        <div class="hero-actions">
+          <a class="btn primary" href="/">立即体验</a>
+          <a class="btn" href="#product">看产品设计</a>
+          <a class="btn" href="#roles">看 21 角色池</a>
+        </div>
+        <div class="metrics">
+          <div class="metric"><strong>3</strong><span>件现场物证</span></div>
+          <div class="metric"><strong>21</strong><span>个角色原型</span></div>
+          <div class="metric"><strong>3轮</strong><span>自由审问</span></div>
+        </div>
+      </div>
+      <div class="phone" aria-label="万物有戏产品预览">
+        <div class="scene"></div>
+        <div class="hotspot h1"></div>
+        <div class="hotspot h2"></div>
+        <div class="hotspot h3"></div>
+        <div class="case-card">
+          <p class="eyebrow">CASE GENERATED</p>
+          <h2>午夜桌面的证词</h2>
+          <p>点击光圈收集物证，解锁嫌疑人，追问证词，找出唯一说谎者。</p>
+        </div>
+      </div>
+    </header>
+
+    <section class="section" id="product">
+      <div class="section-head">
+        <h2>不是让 AI 写故事，而是把 AI 约束成可玩的体验。</h2>
+        <p>
+          悬疑推理天然要求闭环：现场、物证、证词、矛盾和真相。
+          这让 AI 的创造力有边界，也让用户不只是阅读，而是在自己的现实空间里完成一次推理。
+        </p>
+      </div>
+      <div class="grid">
+        <article class="tile"><b>01</b><h3>现实物品做入口</h3><p>照片里的台灯、书本、杯子、门窗或桌面痕迹，会成为玩家可点击的物证。</p></article>
+        <article class="tile"><b>02</b><h3>结构化案件事实簿</h3><p>AI 先看图，再基于可见事实生成案件，减少凭空编造。</p></article>
+        <article class="tile"><b>03</b><h3>唯一矛盾校验</h3><p>每局固定三物证、三嫌疑人、一个可验证答案，保证推理能闭环。</p></article>
+        <article class="tile"><b>04</b><h3>自由但有限的审问</h3><p>玩家可以自由提问，但每人三轮，保留紧张感，也控制生成成本。</p></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>从一张照片到一局案件。</h2>
+        <p>核心流程被压缩在三分钟内，适合手机端试玩，也适合作为 AI 产品经理作品集展示。</p>
+      </div>
+      <div class="flow">
+        <article class="step"><span>STEP 01</span><h3>上传照片</h3><p>用户拍下自己周围的现实空间。</p></article>
+        <article class="step"><span>STEP 02</span><h3>识别物证</h3><p>Qwen 识别清晰可见的物品、表面和痕迹。</p></article>
+        <article class="step"><span>STEP 03</span><h3>生成案件</h3><p>DeepSeek 将视觉事实编译成悬疑事实簿。</p></article>
+        <article class="step"><span>STEP 04</span><h3>审问角色</h3><p>每局从角色池挑选三名嫌疑人，支持自由追问。</p></article>
+        <article class="step"><span>STEP 05</span><h3>揭晓真相</h3><p>玩家根据证词与物证找出唯一矛盾。</p></article>
+      </div>
+    </section>
+
+    <section class="section" id="roles">
+      <div class="section-head">
+        <h2>21 个可复用角色，让案件有稳定风格。</h2>
+        <p>角色池降低每局生成成本，也让 Demo 拥有统一的悬疑视觉资产。正式立绘可以继续替换同名资源。</p>
+      </div>
+      <div class="roster">
+        <article class="person"><img src="/portraits/noir-01.webp" alt="沈砚舟" /><strong>沈砚舟</strong><small>私家侦探</small></article>
+        <article class="person"><img src="/portraits/noir-02.webp" alt="林晚晴" /><strong>林晚晴</strong><small>心理咨询师</small></article>
+        <article class="person"><img src="/portraits/noir-03.webp" alt="顾言川" /><strong>顾言川</strong><small>企业董事长</small></article>
+        <article class="person"><img src="/portraits/noir-04.webp" alt="苏念安" /><strong>苏念安</strong><small>法医助理</small></article>
+        <article class="person"><img src="/portraits/noir-05.webp" alt="陆承泽" /><strong>陆承泽</strong><small>新闻记者</small></article>
+        <article class="person"><img src="/portraits/noir-06.webp" alt="唐婉宁" /><strong>唐婉宁</strong><small>豪门夫人</small></article>
+        <article class="person"><img src="/portraits/noir-07.webp" alt="周启明" /><strong>周启明</strong><small>老警探</small></article>
+        <article class="person"><img src="/portraits/noir-08.webp" alt="许清禾" /><strong>许清禾</strong><small>古董店老板</small></article>
+        <article class="person"><img src="/portraits/noir-09.webp" alt="江野" /><strong>江野</strong><small>网络主播</small></article>
+        <article class="person"><img src="/portraits/noir-10.webp" alt="叶知秋" /><strong>叶知秋</strong><small>高中教师</small></article>
+        <article class="person"><img src="/portraits/noir-11.webp" alt="韩墨白" /><strong>韩墨白</strong><small>律师</small></article>
+        <article class="person"><img src="/portraits/noir-12.webp" alt="温如月" /><strong>温如月</strong><small>画家</small></article>
+        <article class="person"><img src="/portraits/noir-13.webp" alt="王桂芬" /><strong>王桂芬</strong><small>小区保洁员</small></article>
+        <article class="person"><img src="/portraits/noir-14.webp" alt="陈浩然" /><strong>陈浩然</strong><small>外卖骑手</small></article>
+        <article class="person"><img src="/portraits/noir-15.webp" alt="赵小雨" /><strong>赵小雨</strong><small>酒店服务员</small></article>
+        <article class="person"><img src="/portraits/noir-16.webp" alt="李建国" /><strong>李建国</strong><small>小区门卫</small></article>
+        <article class="person"><img src="/portraits/noir-17.webp" alt="林晓梅" /><strong>林晓梅</strong><small>早餐店老板娘</small></article>
+        <article class="person"><img src="/portraits/noir-18.webp" alt="张伟强" /><strong>张伟强</strong><small>网约车司机</small></article>
+        <article class="person"><img src="/portraits/noir-19.webp" alt="许星河" /><strong>许星河</strong><small>高中生</small></article>
+        <article class="person"><img src="/portraits/noir-20.webp" alt="沈知夏" /><strong>沈知夏</strong><small>初中生</small></article>
+        <article class="person"><img src="/portraits/noir-21.webp" alt="方野" /><strong>方野</strong><small>职高学生/维修工</small></article>
+      </div>
+    </section>
+
+    <section class="section closing">
+      <div class="closing-inner">
+        <p class="eyebrow">FOR RESUME SHOWCASE</p>
+        <h2>AI 搭舞台，现实物品做证据，用户亲手破案。</h2>
+        <p>这是一个验证 AI Native 内容体验的 MVP：重点不是生成更多文本，而是把生成能力变成可互动、可推理、可分享的短局游戏。</p>
+        <a class="btn primary" href="/">打开万物有戏 Demo</a>
+      </div>
+    </section>
+  </body>
+</html>

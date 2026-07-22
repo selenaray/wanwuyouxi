@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { V2PrivateCaseSchema } from "@/server/cases/v2-contracts";
 import { validObservation, validV2Case } from "@/server/cases/v2-contracts.fixture";
+import { SUSPECT_ROSTER } from "@/features/game/suspect-roster";
 
 import {
   DeepSeekFactbookCompiler,
@@ -54,7 +55,7 @@ describe("DeepSeekFactbookCompiler", () => {
 
     const userMessage = transport.requests[0]?.messages[1]?.content;
     const payload = JSON.parse(userMessage ?? "null");
-    expect(payload).toEqual({ observation: validObservation });
+    expect(payload).toEqual({ observation: validObservation, suspectRoster: SUSPECT_ROSTER });
     expect(JSON.stringify(payload)).not.toContain("signed://");
     expect(JSON.stringify(payload)).not.toContain("sessionId");
     expect(JSON.stringify(payload)).not.toContain("traceId");
@@ -127,7 +128,7 @@ describe("DeepSeekFactbookCompiler", () => {
       "contradiction", "wrongAnswerHint", "truth", "id", "objectName",
       "visibleDescription", "regionHint", "x", "y", "radius", "confidence",
       "visualFactId", "suspectId", "publicDescription", "name", "identity", "relation",
-      "personalityTags", "portraitKey", "initialTestimony", "privateAction",
+      "gender", "age", "personalityTags", "portraitKey", "initialTestimony", "privateAction",
       "allowedFactIds", "timeLabel", "text", "factRefs", "evidenceRefs", "claimId",
       "evidenceId", "explanation", "summary", "motive", "evidenceChain",
     ];
@@ -137,7 +138,7 @@ describe("DeepSeekFactbookCompiler", () => {
       expect(DEEPSEEK_FACTBOOK_REPAIR_SYSTEM_PROMPT).toContain(`"${key}"`);
     }
     expect(DEEPSEEK_COMPILER_SYSTEM_PROMPT).toContain('"interactionMode": "HOTSPOT" | "CARD_FALLBACK"');
-    expect(DEEPSEEK_COMPILER_SYSTEM_PROMPT).toContain('"portraitKey": "noir-01" | ... | "noir-12"');
+    expect(DEEPSEEK_COMPILER_SYSTEM_PROMPT).toContain("suspectRoster");
     expect(DEEPSEEK_COMPILER_SYSTEM_PROMPT).toContain("恰好 3 项");
     expect(DEEPSEEK_COMPILER_SYSTEM_PROMPT).toContain("number(0..1)");
     expect(DEEPSEEK_COMPILER_SYSTEM_PROMPT).toContain("number(0.04..0.12)");
@@ -274,7 +275,7 @@ describe("DeepSeekFactbookCompiler", () => {
     ["evidence suspect mapping", {
       ...validV2Case,
       evidence: [
-        { ...validV2Case.evidence[0], suspectId: "su-zhou" },
+        { ...validV2Case.evidence[0], suspectId: "su-lin" },
         ...validV2Case.evidence.slice(1),
       ],
     }],

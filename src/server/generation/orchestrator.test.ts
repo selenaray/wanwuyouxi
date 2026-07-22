@@ -161,7 +161,7 @@ describe("runGenerationJob", () => {
   it("repairs at most once and publishes after deterministic and semantic revalidation", async () => {
     const { job, jobs } = await createLeasedJob("repair");
     const issue = { code: "COPY_QUALITY" as const, field: "wrongAnswerHint", message: "提示不具体" };
-    const repairedGame = { ...structuredClone(validGame), wrongAnswerHint: "先对照杯底水印与乔野的绝对说法。" };
+    const repairedGame = { ...structuredClone(validGame), wrongAnswerHint: "先对照杯底水印与江野的绝对说法。" };
     const compiler: CaseFactbookCompiler = {
       compileCase: vi.fn().mockResolvedValue(structuredClone(validGame)),
       repairCase: vi.fn().mockResolvedValue(repairedGame),

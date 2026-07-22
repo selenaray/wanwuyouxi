@@ -23,7 +23,7 @@ describe("generateStatelessCase", () => {
 
     expect(result.case.suspects).toHaveLength(3);
     expect(result.correctAnswerIndex).toBe(2);
-    expect(result.truth).toContain("乔野移动杯子");
+    expect(result.truth).toContain("江野移动杯子");
     expect(JSON.stringify(result.case)).not.toContain("privateAction");
     expect(JSON.stringify(result.case)).not.toContain("liarSuspectId");
   });

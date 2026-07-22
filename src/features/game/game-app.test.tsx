@@ -68,18 +68,18 @@ describe("GameApp", () => {
     fireEvent.click(screen.getByRole("button", { name: "整理证词" }));
     expect(screen.getByRole("heading", { name: "哪句话与现场物证矛盾？" })).toBeInTheDocument();
     expect(screen.getByText("杯子从始至终都在原位。")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("radio", { name: /乔野/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /江野/ }));
     fireEvent.click(screen.getByRole("button", { name: "提交推理" }));
     expect(screen.getByRole("heading", { name: "案件已解开" })).toBeInTheDocument();
-    expect(screen.getByText(/乔野移动杯子/)).toBeInTheDocument();
+    expect(screen.getByText(/江野移动杯子/)).toBeInTheDocument();
   });
 
   it("keeps a suspect locked until its linked evidence is opened", () => {
     reachBriefing();
     fireEvent.click(screen.getByRole("button", { name: "进入现场" }));
 
-    expect(screen.getByRole("button", { name: "查看乔野角色卡" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "查看江野角色卡" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "查看杯子物证" }));
-    expect(screen.getByRole("button", { name: "查看乔野角色卡" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "查看江野角色卡" })).toBeEnabled();
   });
 });

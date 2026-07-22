@@ -54,6 +54,8 @@ const V1PlayerCaseSchema = z.object({
 const PortraitKeySchema = z.enum([
   "noir-01", "noir-02", "noir-03", "noir-04", "noir-05", "noir-06",
   "noir-07", "noir-08", "noir-09", "noir-10", "noir-11", "noir-12",
+  "noir-13", "noir-14", "noir-15", "noir-16", "noir-17", "noir-18",
+  "noir-19", "noir-20", "noir-21",
 ]);
 
 const EvidenceSchema = z.object({
@@ -72,6 +74,8 @@ const EvidenceSchema = z.object({
 const SuspectSchema = z.object({
   id: z.string(),
   name: z.string(),
+  gender: z.enum(["男", "女"]),
+  age: z.number().int(),
   identity: z.string(),
   relation: z.string(),
   personalityTags: z.tuple([z.string(), z.string()]),
@@ -236,6 +240,26 @@ export function revealCase(caseId: string) {
     { method: "GET" },
     z.object({ truth: z.string(), correctAnswerIndex: z.number(), firstAnswerCorrect: z.boolean().nullable() }),
   );
+}
+
+export type InterrogationMessage = {
+  role: "user" | "suspect";
+  content: string;
+};
+
+export function interrogateSuspect(input: {
+  game: V2PlayerCase;
+  suspectId: string;
+  messages: InterrogationMessage[];
+}) {
+  return request<{ reply: string; remainingRounds: number }>("/api/interrogation", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  }, z.object({
+    reply: z.string().min(1),
+    remainingRounds: z.number().int().min(0).max(3),
+  }));
 }
 
 export function deleteImage(imageId: string) {

@@ -3,7 +3,7 @@ import type { MockCase, V2PlayerCase } from "./types";
 export const SAMPLE_IMAGE_URL = "/sample-room.svg";
 
 export const SAMPLE_CORRECT_ANSWER_INDEX = 2;
-export const SAMPLE_TRUTH = "乔野移动杯子取走钥匙后又将其放回。杯底的新水印覆盖了原本连续的灰尘，因此‘杯子从始至终都在原位’与现场物证直接矛盾。";
+export const SAMPLE_TRUTH = "江野移动杯子取走钥匙后又将其放回。杯底的新水印覆盖了原本连续的灰尘，因此‘杯子从始至终都在原位’与现场物证直接矛盾。";
 
 export const LEGACY_MOCK_CASE: MockCase = {
   title: "凌晨零点的失踪者",
@@ -56,7 +56,7 @@ export const MOCK_CASE: V2PlayerCase = {
     {
       id: "ev-lamp",
       visualFactId: "vf-lamp",
-      suspectId: "su-lin",
+      suspectId: "su-shen",
       objectName: "台灯",
       publicDescription: "灯罩朝向墙面，与值班记录中的照明方向不同。",
       regionHint: "左侧",
@@ -68,7 +68,7 @@ export const MOCK_CASE: V2PlayerCase = {
     {
       id: "ev-book",
       visualFactId: "vf-book",
-      suspectId: "su-zhou",
+      suspectId: "su-lin",
       objectName: "书本",
       publicDescription: "书页留下朝向门口的反向折痕。",
       regionHint: "中央",
@@ -80,7 +80,7 @@ export const MOCK_CASE: V2PlayerCase = {
     {
       id: "ev-cup",
       visualFactId: "vf-cup",
-      suspectId: "su-qiao",
+      suspectId: "su-jiang",
       objectName: "杯子",
       publicDescription: "杯底的新水印覆盖了原本连续的灰尘。",
       regionHint: "右侧",
@@ -92,37 +92,43 @@ export const MOCK_CASE: V2PlayerCase = {
   ],
   suspects: [
     {
-      id: "su-lin",
-      name: "林默",
-      identity: "夜班管理员",
+      id: "su-shen",
+      name: "沈砚舟",
+      gender: "男",
+      age: 35,
+      identity: "私家侦探",
       relation: "负责闭馆巡检",
       personalityTags: ["克制", "谨慎"],
       portraitKey: "noir-01",
       initialTestimony: "我只关了台灯，没有碰桌上的其他东西。",
     },
     {
-      id: "su-zhou",
-      name: "周岚",
-      identity: "资料员",
+      id: "su-lin",
+      name: "林晚晴",
+      gender: "女",
+      age: 29,
+      identity: "心理咨询师",
       relation: "最后整理借阅资料",
-      personalityTags: ["直接", "急躁"],
+      personalityTags: ["理性", "洞察"],
       portraitKey: "noir-02",
       initialTestimony: "我把书合上后就离开了。",
     },
     {
-      id: "su-qiao",
-      name: "乔野",
-      identity: "临时访客",
+      id: "su-jiang",
+      name: "江野",
+      gender: "男",
+      age: 22,
+      identity: "网络主播",
       relation: "在闭馆前来取文件",
-      personalityTags: ["冷静", "回避"],
-      portraitKey: "noir-03",
+      personalityTags: ["外向", "冒险"],
+      portraitKey: "noir-09",
       initialTestimony: "杯子从始至终都在原位。",
     },
   ],
   claims: [
-    { id: "cl-lin", suspectId: "su-lin", text: "我只调整了台灯。" },
-    { id: "cl-zhou", suspectId: "su-zhou", text: "我合上书后马上离开。" },
-    { id: "cl-qiao", suspectId: "su-qiao", text: "杯子一直没有离开原位。" },
+    { id: "cl-lin", suspectId: "su-shen", text: "我只调整了台灯。" },
+    { id: "cl-zhou", suspectId: "su-lin", text: "我合上书后马上离开。" },
+    { id: "cl-qiao", suspectId: "su-jiang", text: "杯子一直没有离开原位。" },
   ],
   wrongAnswerHint: "把证词里的绝对说法与物证的新旧痕迹对照。",
 };

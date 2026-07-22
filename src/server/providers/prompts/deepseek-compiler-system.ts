@@ -28,10 +28,12 @@ const V2_PRIVATE_CASE_OUTPUT_SHAPE = `{
   "suspects": [恰好 3 项 {
     "id": "lowercase-stable-id(1..40)",
     "name": "string(2..12)",
+    "gender": "男" | "女",
+    "age": number(12..80),
     "identity": "string(2..24)",
     "relation": "string(4..60)",
     "personalityTags": [恰好 2 项 "string(1..8)"],
-    "portraitKey": "noir-01" | ... | "noir-12",
+    "portraitKey": "noir-01" | ... | "noir-21",
     "initialTestimony": "string(8..140)",
     "privateAction": "string(6..120)",
     "allowedFactIds": [1..12 项 existing timelineFacts.id or claims.id]
@@ -71,7 +73,7 @@ ${V2_PRIVATE_CASE_OUTPUT_SHAPE}
 1. version 固定为 2；evidence、suspects、claims 各恰好 3 项。
 2. visualFacts 必须逐项原样复制 observation.visualFacts；每条 evidence 必须引用其中一个 visualFactId，并原样复制该事实的 objectName、regionHint、x、y、radius、confidence。
 3. 三条 evidence 的 id、visualFactId 和 suspectId 各自唯一，形成三件物证到三名嫌疑人的一对一映射。
-4. 三名嫌疑人的 id 唯一；portraitKey 从 noir-01 到 noir-12 中选择，且三人不得重复。
+4. 三名嫌疑人必须从输入 suspectRoster 中选择最适配案件的 3 人；必须逐字复制 name、gender、age、identity、personalityTags、portraitKey，且三人不得重复。
 5. 三条 claim 的 id 和 suspectId 各自唯一；所有 factRefs、evidenceRefs 必须引用本对象内已存在的事实和物证。
 6. liarSuspectId 必须指向唯一说谎者。contradiction 必须用该嫌疑人的 claimId 与 evidenceId，且 explanation 仅由公开证词和物证可推出。
 7. truth 只能由公开 claims 与 evidence 支持；不得依赖 privateAction、隐藏设定、照片外事实或常识补完。

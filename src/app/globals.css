@@ -108,6 +108,23 @@ button { color: inherit; }
 .suspect-sheet-tags { margin-bottom: 14px; }
 .suspect-sheet-tags em { padding: 5px 9px; font-size: 9px; }
 .suspect-sheet blockquote { margin: 0 0 18px; padding: 13px 15px; border-left: 2px solid var(--accent-bright); background: rgba(211,74,82,.08); color: #e1d9d5; font: 14px/1.7 Georgia, "Songti SC", serif; }
+.interrogation-panel { margin: 0 0 14px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.035); }
+.interrogation-heading { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
+.interrogation-heading .eyebrow { grid-column: 1 / -1; }
+.interrogation-heading strong { font-size: 13px; }
+.interrogation-heading span { color: var(--accent-bright); font: 11px var(--font-mono); }
+.interrogation-guide { margin: 8px 0 10px; color: #8f8989; font-size: 11px; line-height: 1.5; }
+.interrogation-log { max-height: 132px; overflow-y: auto; display: grid; gap: 8px; margin-bottom: 10px; scrollbar-width: thin; }
+.empty-dialogue { margin: 0; color: #787276; font-size: 11px; line-height: 1.55; }
+.dialogue-line { margin: 0; padding: 9px 10px; border-radius: 11px; color: #d9d1cd; font-size: 12px; line-height: 1.55; }
+.dialogue-line span { display: block; margin-bottom: 3px; color: #8c8789; font: 8px var(--font-mono); }
+.dialogue-line.user { margin-left: 24px; background: rgba(239,100,109,.13); }
+.dialogue-line.suspect { margin-right: 24px; background: rgba(255,255,255,.055); }
+.interrogation-form { display: grid; grid-template-columns: 1fr 72px; gap: 8px; }
+.interrogation-form input { min-width: 0; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; background: #101115; color: var(--text); font-size: 12px; }
+.interrogation-form input:disabled { opacity: .55; }
+.interrogation-form .secondary-button { min-height: 44px; padding: 0 12px; border-radius: 12px; font-size: 12px; }
+.interrogation-panel .inline-error { position: static; padding: 9px 10px; margin: 0 0 9px; border-radius: 10px; font-size: 11px; }
 
 .deduction-screen { background: radial-gradient(circle at 50% 18%, #29161b, #09090b 40%); }.deduction-copy { margin-top: 16px; }.deduction-mark { display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 24px; border: 1px solid rgba(239,100,109,.45); border-radius: 50%; color: var(--accent-bright); font: 30px Georgia, serif; box-shadow: 0 0 40px rgba(166,30,46,.18); }.deduction-copy h1 { font-size: 39px; }.hint-card { margin: 17px 0 0; padding: 13px 15px; border-left: 2px solid var(--amber); background: rgba(231,182,110,.08); }.hint-card span { color: var(--amber); font: 9px var(--font-mono); }.hint-card p { margin: 5px 0 0; color: #d9c7aa; font-size: 11px; }.answer-list { display: grid; gap: 10px; margin: 24px 0 18px; }.answer-option { min-height: 66px; padding: 0 16px; display: flex; align-items: center; gap: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.035); cursor: pointer; }.answer-option input { position: absolute; opacity: 0; }.answer-option.selected { border-color: var(--accent-bright); background: rgba(211,74,82,.12); }.answer-letter { color: #767174; font: 11px var(--font-mono); }.answer-option strong { flex: 1; font-size: 14px; }.answer-radio { width: 18px; height: 18px; border: 1px solid #5b5659; border-radius: 50%; }.selected .answer-radio { border: 5px solid var(--accent-bright); }
 

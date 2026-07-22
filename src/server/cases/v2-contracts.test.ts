@@ -8,6 +8,7 @@ import {
   VisionObservationSchema,
   toV2PlayerCase,
 } from "./v2-contracts";
+import { PORTRAIT_KEYS as ROSTER_PORTRAIT_KEYS } from "@/features/game/suspect-roster";
 import { validObservation, validV2Case } from "./v2-contracts.fixture";
 
 export { validObservation, validV2Case } from "./v2-contracts.fixture";
@@ -114,11 +115,8 @@ describe("V2 contracts", () => {
   });
 
   it("exposes only the fixed portrait keys", () => {
-    expect(PORTRAIT_KEYS).toEqual([
-      "noir-01", "noir-02", "noir-03", "noir-04", "noir-05", "noir-06",
-      "noir-07", "noir-08", "noir-09", "noir-10", "noir-11", "noir-12",
-    ]);
-    expect(PortraitKeySchema.safeParse("noir-12").success).toBe(true);
-    expect(PortraitKeySchema.safeParse("noir-13").success).toBe(false);
+    expect(PORTRAIT_KEYS).toEqual(ROSTER_PORTRAIT_KEYS);
+    expect(PortraitKeySchema.safeParse("noir-21").success).toBe(true);
+    expect(PortraitKeySchema.safeParse("noir-22").success).toBe(false);
   });
 });
