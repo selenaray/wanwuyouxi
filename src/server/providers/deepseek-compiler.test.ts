@@ -325,4 +325,13 @@ describe("DeepSeekFactbookCompiler", () => {
       DeepSeekFactbookCompiler,
     );
   });
+
+  it("uses a longer default timeout when the live timeout env is missing or empty", () => {
+    vi.stubEnv("DEEPSEEK_API_KEY", "test-key");
+    vi.stubEnv("GENERATION_TIMEOUT_MS", "");
+
+    const compiler = createDeepSeekFactbookCompilerFromEnv();
+
+    expect((compiler as unknown as { options: { timeoutMs: number } }).options.timeoutMs).toBe(75_000);
+  });
 });

@@ -24,6 +24,8 @@ type CompilerOptions = {
   timeoutMs: number;
 };
 
+const DEFAULT_DEEPSEEK_FACTBOOK_TIMEOUT_MS = 75_000;
+
 type PassObservation = Extract<VisionObservation, { decision: "PASS" }>;
 
 class OpenAIDeepSeekFactbookTransport implements DeepSeekTransport {
@@ -367,6 +369,13 @@ export function createDeepSeekFactbookCompilerFromEnv() {
   return new DeepSeekFactbookCompiler({
     transport: createDeepSeekFactbookTransportFromEnv(),
     model: process.env.DEEPSEEK_MODEL ?? "deepseek-v4-flash",
-    timeoutMs: Number(process.env.GENERATION_TIMEOUT_MS ?? 30_000),
+    timeoutMs: readFactbookTimeoutMs(process.env.GENERATION_TIMEOUT_MS),
   });
+}
+
+function readFactbookTimeoutMs(value: string | undefined) {
+  const parsed = typeof value === "string" && value.trim() !== "" ? Number(value) : NaN;
+  return Number.isFinite(parsed) && parsed >= 10_000
+    ? parsed
+    : DEFAULT_DEEPSEEK_FACTBOOK_TIMEOUT_MS;
 }
