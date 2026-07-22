@@ -33,7 +33,6 @@ export async function POST(request: Request) {
     const imageUrl = `data:${image.type || "image/jpeg"};base64,${bytes.toString("base64")}`;
     const hasLiveModels = Boolean(process.env.QWEN_API_KEY && process.env.DEEPSEEK_API_KEY);
     const input = { imageUrl, imageWidth: width, imageHeight: height, traceId };
-    let degraded = false;
     let result;
     try {
       result = await generateStatelessCase(input, {
@@ -43,16 +42,11 @@ export async function POST(request: Request) {
       });
     } catch (error) {
       if (!hasLiveModels) throw error;
-      degraded = true;
-      console.warn("LIVE_GENERATION_FALLBACK", errorCode(error));
-      result = await generateStatelessCase(input, {
-        vision: new FakeVisionObservationProvider(),
-        compiler: new FakeCaseFactbookCompiler(),
-        judge: new FakeCaseFactbookJudge(),
-      });
+      console.warn("LIVE_GENERATION_FAILED", errorCode(error));
+      throw error;
     }
 
-    return Response.json({ ok: true, data: { ...result, degraded }, traceId });
+    return Response.json({ ok: true, data: { ...result, degraded: false }, traceId });
   } catch (error) {
     const code = errorCode(error);
     return Response.json({ ok: false, error: { code, message: "现场重建未完成，请重试", retryable: true }, traceId }, { status: 503 });

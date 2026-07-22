@@ -27,7 +27,7 @@ import { SAMPLE_IMAGE_URL } from "./mock-case";
 import { loadGameState, saveGameState } from "./persistence";
 import { isV2PlayerCase } from "./types";
 
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_FILE_BYTES = 15 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif"];
 
 export function GameApp() {
@@ -111,7 +111,7 @@ export function GameApp() {
       return;
     }
     if (file.size > MAX_FILE_BYTES) {
-      setFileError("图片超过 5 MB，请选择更小的照片");
+      setFileError("图片超过 15 MB，请选择更小的照片");
       return;
     }
     setFileError(null);

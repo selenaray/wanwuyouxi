@@ -1,5 +1,6 @@
 const MAX_EDGE = 1600;
 const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_SOURCE_BYTES = 15 * 1024 * 1024;
 
 export function calculateResizeDimensions(width: number, height: number) {
   const scale = Math.min(1, MAX_EDGE / Math.max(width, height));
@@ -15,7 +16,7 @@ export function shouldUseServerHeicFallback(file: File) {
 
 export async function prepareImageForUpload(file: File): Promise<File> {
   if (shouldUseServerHeicFallback(file)) return file;
-  if (file.size > MAX_BYTES) throw new Error("IMAGE_TOO_LARGE");
+  if (file.size > MAX_SOURCE_BYTES) throw new Error("IMAGE_TOO_LARGE");
 
   let bitmap: ImageBitmap;
   try {
@@ -44,4 +45,3 @@ export async function prepareImageForUpload(file: File): Promise<File> {
   const baseName = file.name.replace(/\.[^.]+$/, "") || "scene";
   return new File([blob], `${baseName}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
 }
-
