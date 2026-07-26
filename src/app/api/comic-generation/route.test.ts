@@ -55,7 +55,7 @@ describe("POST /api/comic-generation", () => {
     expect(generateMock.mock.calls[0]?.[0].prompt).toContain("本案真正发生变化的物证：杯子");
     expect(generateMock.mock.calls[0]?.[0].prompt).toContain("严禁画钥匙、钥匙串、金属钥匙");
     expect(generateMock.mock.calls[0]?.[0].prompt).not.toContain("key object");
-    expect(generateMock.mock.calls[0]?.[0].referenceImages[0]).toMatch(/^data:image\/webp;base64,/);
+    expect(generateMock.mock.calls[0]?.[0].referenceImages[0]).toBe("http://test/portraits/noir-09.webp");
     expect(body.data.debugPrompt).toContain("本案真正发生变化的物证：杯子");
     expect(body.data.referencePortraitKey).toBe("noir-09");
   });

@@ -70,6 +70,14 @@ class DashScopeQwenImageTransport implements QwenImageTransport {
     });
     const body = await response.json() as QwenImageResponse;
     if (!response.ok || body.code) {
+      console.error("QWEN_IMAGE_PROVIDER_ERROR", JSON.stringify({
+        status: response.status,
+        code: body.code ?? null,
+        message: body.message ?? null,
+        apiHost: new URL(this.apiUrl).host,
+        model: request.model,
+        referenceImageCount: request.input.messages[0].content.filter((item) => "image" in item).length,
+      }));
       const error = new Error(body.message || "QWEN_IMAGE_UNAVAILABLE") as Error & { status?: number };
       error.status = response.status;
       throw error;

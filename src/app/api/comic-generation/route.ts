@@ -1,6 +1,3 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-
 import { z } from "zod";
 
 import { PORTRAIT_KEYS } from "@/features/game/suspect-roster";
@@ -126,15 +123,10 @@ function imageUrlWithRenderKey(imageUrl: string, traceId: string) {
   return `${imageUrl.split("#")[0]}#comic-${traceId}`;
 }
 
-async function portraitReferenceImages(storyboard: CaseComicStoryboard) {
+function portraitReferenceImages(request: Request, storyboard: CaseComicStoryboard) {
   if (!storyboard.referencePortraitKey) return [];
-  try {
-    const portraitPath = join(process.cwd(), "public", "portraits", `${storyboard.referencePortraitKey}.webp`);
-    const image = await readFile(portraitPath);
-    return [`data:image/webp;base64,${image.toString("base64")}`];
-  } catch {
-    return [];
-  }
+  const origin = new URL(request.url).origin;
+  return [new URL(`/portraits/${storyboard.referencePortraitKey}.webp`, origin).toString()];
 }
 
 export async function POST(request: Request) {
@@ -156,7 +148,7 @@ export async function POST(request: Request) {
     ].join("\n");
     const image = await createQwenImageComicProviderFromEnv().generate({
       prompt,
-      referenceImages: await portraitReferenceImages(storyboard),
+      referenceImages: portraitReferenceImages(request, storyboard),
     });
 
     return Response.json({
@@ -174,6 +166,11 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const code = errorCode(error);
+    console.error("COMIC_GENERATION_FAILED", JSON.stringify({
+      traceId,
+      code,
+      message: error instanceof Error ? error.message : null,
+    }));
     return Response.json({
       ok: false,
       error: { code, message: "案件漫画生成失败，请稍后重试", retryable: code !== "QWEN_IMAGE_AUTH_FAILED" },
