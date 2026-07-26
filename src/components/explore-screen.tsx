@@ -21,6 +21,12 @@ type Props = {
   game: PlayerCase;
 };
 
+const FALLBACK_HOTSPOTS = [
+  { x: 0.28, y: 0.34 },
+  { x: 0.58, y: 0.48 },
+  { x: 0.75, y: 0.66 },
+] as const;
+
 export function ExploreScreen({
   game,
   imageUrl,
@@ -48,6 +54,12 @@ export function ExploreScreen({
     ? game.evidence.every((evidence) => openedEvidenceIds.includes(evidence.id))
       && game.suspects.every((suspect) => unlockedSuspectIds.includes(suspect.id))
     : game.clues.every((clue) => openedClueIds.includes(clue.id));
+  const fallbackHotspot = game.interactionMode === "CARD_FALLBACK";
+  const v2EvidenceHotspots = v2
+    ? game.evidence.map((evidence, index) => fallbackHotspot
+      ? { ...evidence, x: FALLBACK_HOTSPOTS[index]?.x ?? evidence.x, y: FALLBACK_HOTSPOTS[index]?.y ?? evidence.y }
+      : evidence)
+    : [];
 
   return (
     <div className={`screen explore-screen ${v2 ? "v2-explore-screen" : ""}`}>
@@ -59,8 +71,8 @@ export function ExploreScreen({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={imageUrl} alt="可探索的案发现场" />
         <div className="scene-vignette" />
-        {game.interactionMode === "CARD_FALLBACK" ? null : v2
-          ? game.evidence.map((evidence) => (
+        {v2
+          ? v2EvidenceHotspots.map((evidence) => (
               <ClueHotspot
                 key={evidence.id}
                 clue={evidence}
@@ -69,7 +81,7 @@ export function ExploreScreen({
                 onOpen={() => onOpenEvidence(evidence.id)}
               />
             ))
-          : game.clues.map((clue) => (
+          : game.interactionMode === "CARD_FALLBACK" ? null : game.clues.map((clue) => (
               <ClueHotspot key={clue.id} clue={clue} collected={openedClueIds.includes(clue.id)} onOpen={() => onOpenClue(clue.id)} />
             ))}
       </div>

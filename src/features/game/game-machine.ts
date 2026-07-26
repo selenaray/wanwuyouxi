@@ -26,6 +26,10 @@ export function createInitialState(): GameState {
     caseData: null,
     truth: null,
     solutionAnswerIndex: null,
+    comicStatus: "idle",
+    comicImageUrl: null,
+    comicPanels: null,
+    comicErrorCode: null,
   };
 }
 
@@ -46,6 +50,10 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         caseData: MOCK_CASE,
         solutionAnswerIndex: SAMPLE_CORRECT_ANSWER_INDEX,
         truth: SAMPLE_TRUTH,
+        comicStatus: "idle",
+        comicImageUrl: null,
+        comicPanels: null,
+        comicErrorCode: null,
         openedClueIds: [],
         activeClueId: null,
         openedEvidenceIds: [],
@@ -65,6 +73,10 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         caseData: null,
         truth: null,
         solutionAnswerIndex: null,
+        comicStatus: "idle",
+        comicImageUrl: null,
+        comicPanels: null,
+        comicErrorCode: null,
         openedClueIds: [],
         activeClueId: null,
         openedEvidenceIds: [],
@@ -226,6 +238,28 @@ export function transitionGame(state: GameState, event: GameEvent): GameState {
         solutionAnswerIndex: event.correctAnswerIndex,
         firstAnswerCorrect: event.firstAnswerCorrect,
         revealedAt: event.now,
+      };
+    case "COMIC_GENERATION_STARTED":
+      return state.screen === "result"
+        ? {
+          ...state,
+          comicStatus: "loading",
+          comicErrorCode: null,
+        }
+        : state;
+    case "COMIC_GENERATION_SUCCEEDED":
+      return {
+        ...state,
+        comicStatus: "success",
+        comicImageUrl: event.imageUrl,
+        comicPanels: event.panels,
+        comicErrorCode: null,
+      };
+    case "COMIC_GENERATION_FAILED":
+      return {
+        ...state,
+        comicStatus: "error",
+        comicErrorCode: event.errorCode,
       };
     case "REPLAY":
       return createInitialState();

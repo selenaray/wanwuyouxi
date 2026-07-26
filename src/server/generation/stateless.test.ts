@@ -52,7 +52,33 @@ describe("generateStatelessCase", () => {
     });
 
     expect(result.degraded).toBe(true);
+    expect(result.case.title).not.toBe("现场第三处破绽");
     expect(result.case.evidence.map((item) => item.objectName)).toEqual(["台灯", "书本", "杯子"]);
-    expect(result.truth).toContain("杯子");
+    expect(new Set(result.case.suspects.map((suspect) => suspect.name)).size).toBe(3);
+    expect(["台灯", "书本", "杯子"].some((objectName) => result.truth.includes(objectName))).toBe(true);
+  });
+
+  it("does not always place the fallback correct answer in the third slot", async () => {
+    const result = await generateStatelessCase({
+      imageUrl: "data:image/jpeg;base64,AA==",
+      imageWidth: 1200,
+      imageHeight: 900,
+      traceId: "trace-demo-alt",
+    }, {
+      vision: new FakeVisionObservationProvider(),
+      compiler: {
+        async compileCase() {
+          throw new ProviderError("TIMEOUT", "DEEPSEEK_FACTBOOK_TIMEOUT");
+        },
+        async repairCase() {
+          throw new ProviderError("TIMEOUT", "DEEPSEEK_FACTBOOK_TIMEOUT");
+        },
+      },
+      judge: new FakeCaseFactbookJudge(),
+      fallbackCompiler: new ObservationFallbackFactbookCompiler(),
+      fallbackJudge: new FakeCaseFactbookJudge(),
+    });
+
+    expect(result.correctAnswerIndex).not.toBe(2);
   });
 });

@@ -161,6 +161,33 @@ export async function generateStatelessCase(file: File) {
   }));
 }
 
+const ComicPanelSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+}).strict();
+
+export function generateCaseComic(input: {
+  game: PlayerCase;
+  truth: string;
+  correctAnswerIndex: number | null;
+}) {
+  return request<{
+    imageUrl: string;
+    width: number | null;
+    height: number | null;
+    panels: { title: string; description: string }[];
+  }>("/api/comic-generation", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  }, z.object({
+    imageUrl: z.string().min(1),
+    width: z.number().nullable(),
+    height: z.number().nullable(),
+    panels: z.array(ComicPanelSchema).length(4),
+  }));
+}
+
 export function uploadImage(file: File) {
   const form = new FormData();
   form.set("image", file);

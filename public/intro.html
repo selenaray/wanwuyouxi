@@ -88,10 +88,24 @@
       .hero {
         min-height: calc(100vh - 66px);
         display: grid;
-        grid-template-columns: minmax(0, .9fr) minmax(360px, 1.1fr);
+        grid-template-columns: minmax(0, 7fr) minmax(300px, 3fr);
+        gap: clamp(18px, 2.8vw, 36px);
         align-items: center;
-        gap: clamp(28px, 5vw, 72px);
-        padding: 64px clamp(18px, 5vw, 64px) 54px;
+        padding: 30px clamp(18px, 4vw, 58px) 28px clamp(28px, 7vw, 112px);
+      }
+      .hero-copy {
+        max-width: 920px;
+        margin-left: clamp(10px, 2.5vw, 42px);
+      }
+      .hero-video {
+        width: 100%;
+        max-height: min(82vh, 780px);
+        display: block;
+        object-fit: contain;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
       }
       .eyebrow {
         margin: 0 0 12px;
@@ -103,12 +117,12 @@
       }
       h1 {
         margin: 0;
-        max-width: 760px;
-        font: 800 clamp(34px, 5.2vw, 66px) / 1.06 Georgia, "Songti SC", serif;
+        max-width: 920px;
+        font: 800 clamp(42px, 5.4vw, 76px) / 1.05 Georgia, "Songti SC", serif;
         letter-spacing: 0;
       }
       .lead {
-        max-width: 660px;
+        max-width: 760px;
         margin: 22px 0 0;
         color: var(--muted);
         font-size: clamp(16px, 1.5vw, 19px);
@@ -119,7 +133,7 @@
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 10px;
-        max-width: 620px;
+        max-width: 760px;
         margin-top: 34px;
       }
       .proof div {
@@ -130,32 +144,6 @@
       }
       .proof strong { display: block; font: 800 24px Georgia, serif; color: #fff; }
       .proof span { color: var(--quiet); font-size: 12px; }
-      .hero-shot {
-        position: relative;
-        border-radius: 18px;
-        overflow: hidden;
-        border: 1px solid rgba(255,255,255,.18);
-        background: #0b0c10;
-        box-shadow: 0 42px 100px rgba(0,0,0,.42);
-      }
-      .hero-shot img { width: 100%; aspect-ratio: 1.58; object-fit: cover; }
-      .hero-shot .caption {
-        position: absolute;
-        left: 18px;
-        right: 18px;
-        bottom: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 13px 14px;
-        border: 1px solid rgba(255,255,255,.14);
-        border-radius: 12px;
-        background: rgba(7,8,11,.82);
-        backdrop-filter: blur(14px);
-      }
-      .caption b { font-size: 14px; }
-      .caption span { color: var(--muted); font-size: 12px; }
       .section {
         padding: 70px clamp(18px, 5vw, 64px);
         border-top: 1px solid rgba(255,255,255,.09);
@@ -218,6 +206,53 @@
         color: #fff;
         font-weight: 900;
       }
+      .comic-showcase {
+        display: grid;
+        grid-template-columns: minmax(0, 7fr) minmax(260px, 3fr);
+        gap: clamp(18px, 3vw, 38px);
+        align-items: center;
+      }
+      .comic-copy {
+        max-width: 880px;
+        padding: 28px 30px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255,255,255,.05);
+      }
+      .comic-copy h3 {
+        margin: 0 0 14px;
+        font: 800 clamp(28px, 3.2vw, 42px)/1.12 Georgia, "Songti SC", serif;
+      }
+      .comic-copy p {
+        margin: 0 0 16px;
+        color: var(--muted);
+        max-width: 760px;
+        font-size: 16px;
+        line-height: 1.78;
+      }
+      .comic-points {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 9px;
+        margin-top: 22px;
+      }
+      .comic-points span {
+        padding: 10px 12px;
+        border: 1px solid rgba(255,255,255,.11);
+        border-radius: 8px;
+        color: #ead8c1;
+        background: rgba(0,0,0,.18);
+        font-size: 13px;
+      }
+      .comic-image {
+        width: 100%;
+        max-width: 430px;
+        justify-self: end;
+        align-self: center;
+        border-radius: 10px;
+        background: #111217;
+        box-shadow: 0 28px 80px rgba(0,0,0,.34);
+      }
       .details {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -264,16 +299,22 @@
       @media (max-width: 980px) {
         .hero, .section-head { grid-template-columns: 1fr; }
         .hero { min-height: auto; padding-top: 46px; }
+        .hero-copy { max-width: 760px; margin-left: 0; }
+        .hero-video { max-height: 70vh; }
         .details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .comic-showcase { grid-template-columns: 1fr; }
+        .comic-copy { max-width: none; }
+        .comic-points { grid-template-columns: 1fr; }
+        .comic-image { justify-self: start; max-width: 620px; }
         .roster { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       }
       @media (max-width: 660px) {
         .nav { align-items: flex-start; padding: 14px 16px; }
         .nav-links .btn:first-child { display: none; }
         .hero, .section { padding-left: 16px; padding-right: 16px; }
+        .hero-video { max-height: 78vh; }
         .proof, .screens, .details { grid-template-columns: 1fr; }
         .roster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .hero-shot .caption { position: static; border-radius: 0; border-left: 0; border-right: 0; border-bottom: 0; }
       }
     </style>
   </head>
@@ -282,74 +323,80 @@
       <a class="brand" href="/"><span class="brand-mark">W</span><span>万物有戏</span></a>
       <div class="nav-links">
         <a class="btn" href="https://github.com/selenaray/wanwuyouxi">GitHub</a>
-        <a class="btn primary" href="/">点击演示</a>
+        <a class="btn primary" href="/">进入体验</a>
       </div>
     </nav>
 
     <header class="hero">
-      <div>
-        <p class="eyebrow">AI Native Mystery Demo</p>
-        <h1>用一张现实照片，开启一场个人化悬疑推理。</h1>
-        <p class="lead">万物有戏是一款 AI Native 内容体验产品。它把用户身边的真实空间转化为案发现场：可见物品成为物证，角色证词形成矛盾，玩家通过探索和审问完成一次有结论的短局推理。</p>
+      <div class="hero-copy">
+        <p class="eyebrow">AI Native Mystery Product</p>
+        <h1>用一张现实照片，生成一场可以亲手破解的悬疑短局。</h1>
+        <p class="lead">万物有戏是一款 AI Native 内容体验产品。它把用户身边的真实空间转化为案发现场：可见物品成为物证，角色证词形成矛盾，玩家通过点击探索、自由审问、提交判断和漫画复盘，完成一次从输入到真相的互动闭环。</p>
         <div class="hero-actions">
-          <a class="btn primary" href="/">打开 Demo</a>
+          <a class="btn primary" href="/">进入体验</a>
           <a class="btn" href="#screens">看关键体验</a>
           <a class="btn" href="#roles">看角色池</a>
         </div>
         <div class="proof">
           <div><strong>输入</strong><span>现实照片即内容入口</span></div>
-          <div><strong>机制</strong><span>探索、审问、推理闭环</span></div>
-          <div><strong>资产</strong><span>悬疑角色视觉体系</span></div>
+          <div><strong>互动</strong><span>探索、审问、推理推进</span></div>
+          <div><strong>沉淀</strong><span>真相档案与四格漫画</span></div>
         </div>
       </div>
-      <a class="hero-shot" href="/" aria-label="点击进入万物有戏 Demo">
-        <img src="intro-assets/screen-evidence.webp" alt="物证识别体验截图" />
-        <div class="caption"><b>点击任何体验截图，都可以直接进入演示</b><span>wanwuyouxi.xyz</span></div>
-      </a>
+      <video class="hero-video" src="intro-assets/product-flow.mp4" autoplay muted loop playsinline aria-label="万物有戏完整流程录屏"></video>
     </header>
 
     <section class="section" id="screens">
       <div class="section-head">
-        <h2>核心设计：把生成式内容变成可操作的游戏流程。</h2>
-        <p>宣讲重点不是模型能力本身，而是如何把一次生成变成用户能理解、能推进、能完成的体验。四个关键画面对应完整链路：输入、发现、追问、判断。</p>
+        <h2>核心体验：每一步都把内容变成下一次操作。</h2>
+        <p>产品从照片开始，不把生成结果停留在一段故事里，而是拆成可点击的物证、可追问的嫌疑人、可验证的矛盾证词和可保存的复盘结果。</p>
       </div>
       <div class="screens">
         <a class="screen-link" href="/">
           <img src="intro-assets/screen-upload.webp" alt="上传现实照片截图" />
-          <div class="screen-meta"><div><b>照片即入口</b><span>降低创作门槛，让用户从熟悉空间进入剧情。</span></div><span class="play">›</span></div>
+          <div class="screen-meta"><div><b>照片即入口</b><span>真实空间直接变成案件素材，玩家不需要先写设定。</span></div><span class="play">›</span></div>
         </a>
         <a class="screen-link" href="/">
           <img src="intro-assets/screen-evidence.webp" alt="物证热点识别截图" />
-          <div class="screen-meta"><div><b>物证可点击</b><span>把视觉识别结果转成明确操作点，避免只停留在文本生成。</span></div><span class="play">›</span></div>
+          <div class="screen-meta"><div><b>物证可点击</b><span>红色热点把识别结果落到画面上，让发现线索成为动作。</span></div><span class="play">›</span></div>
         </a>
         <a class="screen-link" href="/">
           <img src="intro-assets/screen-interrogate.webp" alt="自由审问嫌疑人截图" />
-          <div class="screen-meta"><div><b>审问有边界</b><span>允许自由表达，同时用轮次和角色设定控制节奏与成本。</span></div><span class="play">›</span></div>
+          <div class="screen-meta"><div><b>审问有边界</b><span>角色按物证解锁，回答围绕当前案件给出不同提示。</span></div><span class="play">›</span></div>
         </a>
         <a class="screen-link" href="/">
           <img src="intro-assets/screen-deduce.webp" alt="整理证词提交推理截图" />
-          <div class="screen-meta"><div><b>推理可验证</b><span>用唯一矛盾收束体验，让玩家得到清晰反馈和完成感。</span></div><span class="play">›</span></div>
+          <div class="screen-meta"><div><b>推理可验证</b><span>答案不靠猜剧情，而是回到物证、证词和现场痕迹。</span></div><span class="play">›</span></div>
         </a>
       </div>
     </section>
 
-    <section class="section">
+    <section class="section" id="comic">
       <div class="section-head">
-        <h2>产品取舍：不是生成更多，而是生成得可玩。</h2>
-        <p>AI 内容产品的难点不只是“能生成”，而是让用户知道下一步做什么、为什么值得继续、怎样判断自己做对了。万物有戏用悬疑推理的结构来承接这些问题。</p>
+        <h2>真相复盘：把破案结果生成四格漫画。</h2>
+        <p>案件结束后，系统会根据本局物证、正确嫌疑人和真相档案生成一张悬疑四格漫画。它不是结算页上的一句答案，而是把玩家刚刚推出来的作案过程重新变成一段可观看、可保存的视觉叙事。</p>
       </div>
-      <div class="details">
-        <article class="detail"><b>01</b><h3>现实感</h3><p>从用户真实照片出发，让内容天然带有“这是我的现场”的代入感。</p></article>
-        <article class="detail"><b>02</b><h3>可交互</h3><p>把模型输出拆成热点、证词、选项和反馈，形成可推进的界面流程。</p></article>
-        <article class="detail"><b>03</b><h3>可控性</h3><p>通过三物证、三嫌疑人、唯一矛盾约束生成质量，减少开放式失控。</p></article>
-        <article class="detail"><b>04</b><h3>可展示</h3><p>短局、移动端、可点击演示，适合在宣讲和简历场景里快速讲清价值。</p></article>
+      <div class="comic-showcase">
+        <div class="comic-copy">
+          <h3>从“找到了答案”到“看见发生过什么”。</h3>
+          <p>四格漫画承接前面的探索和审问：角色、场景、关键物证都来自本局案件，让一次短局推理拥有可以被回看和分享的结果。</p>
+          <div class="comic-points">
+            <span>绑定本局正确嫌疑人，使用对应立绘作为角色参考</span>
+            <span>绑定本局真实物证和破绽，避免固定成同一套剧情</span>
+            <span>画面不出现文字，保留纯视觉复盘和保存空间</span>
+          </div>
+          <div class="hero-actions">
+            <a class="btn primary" href="/">生成一张案件漫画</a>
+          </div>
+        </div>
+        <img class="comic-image" src="intro-assets/comic-recap.png" alt="案件四格漫画复盘示例" />
       </div>
     </section>
 
     <section class="section" id="roles">
       <div class="section-head">
-        <h2>设计 21 个角色立绘，强化统一的悬疑氛围。</h2>
-        <p>角色池让每一局生成不再是随机拼贴。职业身份、人物气质和暗色视觉共同建立内容调性，也为后续的角色口吻、记忆和系列化案件留下扩展空间。</p>
+        <h2>21 个角色立绘，建立统一的悬疑角色系统。</h2>
+        <p>角色池让每一局不再只是随机拼贴。职业身份、人物气质和暗色视觉共同建立内容调性，也支撑审问口吻、嫌疑关系和案件漫画中的角色一致性。</p>
       </div>
       <div class="roster">
         <article class="person"><img src="portraits/noir-01.webp" alt="沈砚舟" /><strong>沈砚舟</strong><small>私家侦探</small></article>
@@ -373,6 +420,19 @@
         <article class="person"><img src="portraits/noir-19.webp" alt="许星河" /><strong>许星河</strong><small>高中生</small></article>
         <article class="person"><img src="portraits/noir-20.webp" alt="沈知夏" /><strong>沈知夏</strong><small>初中生</small></article>
         <article class="person"><img src="portraits/noir-21.webp" alt="方野" /><strong>方野</strong><small>职高学生/维修工</small></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>产品取舍：不是生成更多，而是生成得可玩。</h2>
+        <p>万物有戏把开放生成收束成短局结构：每局固定三件物证、三名嫌疑人、一条核心矛盾，让内容足够变化，也让用户始终知道下一步该做什么。</p>
+      </div>
+      <div class="details">
+        <article class="detail"><b>01</b><h3>现实感</h3><p>从用户真实照片出发，让内容天然带有“这是我的现场”的代入感。</p></article>
+        <article class="detail"><b>02</b><h3>可交互</h3><p>把模型输出拆成热点、证词、选项和反馈，形成可推进的界面流程。</p></article>
+        <article class="detail"><b>03</b><h3>可控性</h3><p>通过三物证、三嫌疑人、唯一矛盾约束生成质量，减少开放式失控。</p></article>
+        <article class="detail"><b>04</b><h3>可沉淀</h3><p>真相档案和四格漫画把一次推理转成可回看的结果，让短局结束后仍有记忆点。</p></article>
       </div>
     </section>
   </body>

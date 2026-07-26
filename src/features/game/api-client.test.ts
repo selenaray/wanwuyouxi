@@ -5,6 +5,7 @@ import {
   createGenerationJob,
   createSession,
   deleteImage,
+  generateCaseComic,
   getGenerationJob,
   getPlayerCase,
   revealCase,
@@ -107,6 +108,35 @@ describe("game API client", () => {
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBeInstanceOf(FormData);
     await expect(revealCase("case")).resolves.toMatchObject({ truth: "真相" });
     await expect(deleteImage("image")).resolves.toEqual({ deleted: true });
+  });
+
+  it("posts a solved case to generate a four-panel comic", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(apiResponse({
+      imageUrl: "https://example.com/comic.png",
+      width: 2048,
+      height: 2048,
+      panels: [
+        { title: "案发前", description: "现场平静。" },
+        { title: "关键动作", description: "嫌疑人行动。" },
+        { title: "伪装现场", description: "现场被恢复。" },
+        { title: "真相揭晓", description: "侦探复盘。" },
+      ],
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const comic = await generateCaseComic({
+      game: MOCK_CASE,
+      truth: "真相",
+      correctAnswerIndex: 2,
+    });
+    expect(comic.imageUrl).toBe("https://example.com/comic.png");
+    expect(comic.panels).toHaveLength(4);
+    expect(comic.panels[0]).toEqual({ title: "案发前", description: "现场平静。" });
+    expect(fetchMock).toHaveBeenCalledWith("/api/comic-generation", expect.objectContaining({
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+    }));
   });
 
   it("maps structured failures and rejects malformed success payloads", async () => {

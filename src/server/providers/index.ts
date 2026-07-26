@@ -20,6 +20,10 @@ export {
   createQwenObservationProviderFromEnv,
   QwenObservationProvider,
 } from "./qwen-observation";
+export {
+  createQwenImageComicProviderFromEnv,
+  QwenImageComicProvider,
+} from "./qwen-image-comic";
 export type {
   CaseFactbookCompiler,
   CaseFactbookJudge,

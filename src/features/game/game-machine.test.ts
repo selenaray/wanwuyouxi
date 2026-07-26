@@ -176,4 +176,31 @@ describe("game state machine", () => {
       errorCode: null,
     });
   });
+
+  it("tracks comic generation loading, success, and retryable failure", () => {
+    let state: GameState = {
+      ...createInitialState(),
+      screen: "result",
+      caseData: V2_CASE,
+      truth: "真相",
+    };
+
+    state = transitionGame(state, { type: "COMIC_GENERATION_STARTED" });
+    expect(state.comicStatus).toBe("loading");
+    expect(state.comicErrorCode).toBeNull();
+
+    state = transitionGame(state, {
+      type: "COMIC_GENERATION_SUCCEEDED",
+      imageUrl: "https://example.com/comic.png",
+      panels: [{ title: "案发前", description: "现场平静。" }],
+    });
+    expect(state.comicStatus).toBe("success");
+    expect(state.comicImageUrl).toBe("https://example.com/comic.png");
+    expect(state.comicPanels?.[0].title).toBe("案发前");
+
+    state = transitionGame(state, { type: "COMIC_GENERATION_STARTED" });
+    state = transitionGame(state, { type: "COMIC_GENERATION_FAILED", errorCode: "QWEN_IMAGE_TIMEOUT" });
+    expect(state.comicStatus).toBe("error");
+    expect(state.comicErrorCode).toBe("QWEN_IMAGE_TIMEOUT");
+  });
 });

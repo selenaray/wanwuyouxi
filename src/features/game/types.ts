@@ -107,6 +107,10 @@ export type GameState = {
   caseData: PlayerCase | null;
   truth: string | null;
   solutionAnswerIndex: number | null;
+  comicStatus: "idle" | "loading" | "success" | "error";
+  comicImageUrl: string | null;
+  comicPanels: { title: string; description: string }[] | null;
+  comicErrorCode: string | null;
 };
 
 export type GameEvent =
@@ -133,6 +137,9 @@ export type GameEvent =
   | { type: "SUBMIT_ANSWER"; answerIndex: number; now: number }
   | { type: "ANSWER_RESPONSE"; correct: boolean; completed: boolean; attemptCount: number; now: number }
   | { type: "REVEAL_LOADED"; truth: string; correctAnswerIndex: number; firstAnswerCorrect: boolean | null; now: number }
+  | { type: "COMIC_GENERATION_STARTED" }
+  | { type: "COMIC_GENERATION_SUCCEEDED"; imageUrl: string; panels: { title: string; description: string }[] }
+  | { type: "COMIC_GENERATION_FAILED"; errorCode: string }
   | { type: "REPLAY" };
 
 export type MockCase = V1PlayerCase & {

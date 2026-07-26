@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { z } from "zod";
 
 import { SUSPECT_ROSTER, PORTRAIT_KEYS } from "@/features/game/suspect-roster";
+import { buildInterrogationHints } from "@/server/cases/case-semantics";
 
 export const maxDuration = 45;
 
@@ -53,14 +54,24 @@ function fallbackReply(input: z.infer<typeof RequestSchema>) {
   if (!suspect) return "你找错人了。这个案子里没有我。";
   const evidence = input.game.evidence.find((item) => item.suspectId === suspect.id);
   const claim = input.game.claims.find((item) => item.suspectId === suspect.id);
-  const tag = suspect.personalityTags[0];
+  const hints = buildInterrogationHints({
+    suspectName: suspect.name,
+    suspectIdentity: suspect.identity,
+    objectName: evidence?.objectName ?? "那件物品",
+    claimText: claim?.text ?? suspect.initialTestimony,
+    evidenceDescription: evidence?.publicDescription ?? "现场有一处细微痕迹",
+    personalityTags: suspect.personalityTags,
+  });
+  const seed = [...`${suspect.id}:${lastQuestion}:${input.messages.length}`]
+    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const picked = Array.from({ length: 3 }, (_, offset) => hints[(seed + offset * 3) % hints.length]);
   if (/物证|证据|痕迹|现场/.test(lastQuestion) && evidence) {
-    return `我注意到你一直追问${evidence.objectName}。我的说法还是那句：${claim?.text ?? suspect.initialTestimony} 至于${evidence.publicDescription}，你得拿出更明确的关联。`;
+    return picked.join(" ");
   }
-  if (/时间|几点|当时|什么时候/.test(lastQuestion)) {
-    return `时间我记得不算模糊，但也不想替别人补证词。你可以先对照三个人的说法，看谁的话和现场不贴。`;
+  if (/时间|几点|当时|什么时候|最后|碰到|碰过/.test(lastQuestion)) {
+    return picked.join(" ");
   }
-  return `我是${suspect.name}，${suspect.identity}。你这么问，我只能说：${suspect.initialTestimony} 别只看我${tag}，看物证。`;
+  return picked.slice(0, 2).join(" ");
 }
 
 async function askDeepSeek(input: z.infer<typeof RequestSchema>) {

@@ -6,6 +6,13 @@ import { GameApp } from "./game-app";
 import { LEGACY_MOCK_CASE, SAMPLE_IMAGE_URL } from "./mock-case";
 import { saveGameState } from "./persistence";
 
+function apiResponse(data: unknown, status = 200) {
+  return new Response(JSON.stringify({ ok: true, data, traceId: "trace" }), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
 describe("GameApp", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -14,6 +21,7 @@ describe("GameApp", () => {
 
   afterEach(() => {
     act(() => vi.runOnlyPendingTimers());
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
@@ -90,6 +98,43 @@ describe("GameApp", () => {
     fireEvent.click(screen.getByRole("button", { name: "提交推理" }));
     expect(screen.getByRole("heading", { name: "案件已解开" })).toBeInTheDocument();
     expect(screen.getByText(/江野移动杯子/)).toBeInTheDocument();
+  });
+
+  it("generates a case comic from the result screen", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(apiResponse({
+      imageUrl: "https://example.com/comic.png",
+      width: 2048,
+      height: 2048,
+      panels: [
+        { title: "案发前", description: "现场平静。" },
+        { title: "关键动作", description: "嫌疑人移动杯子。" },
+        { title: "伪装现场", description: "现场被恢复。" },
+        { title: "真相揭晓", description: "侦探揭开真相。" },
+      ],
+    })));
+    reachBriefing();
+    fireEvent.click(screen.getByRole("button", { name: "进入现场" }));
+    for (const evidenceName of ["查看台灯物证", "查看书本物证", "查看杯子物证"]) {
+      fireEvent.click(screen.getByRole("button", { name: evidenceName }));
+      fireEvent.click(screen.getByRole("button", { name: "收起物证" }));
+    }
+    fireEvent.click(screen.getByRole("button", { name: "整理证词" }));
+    fireEvent.click(screen.getByRole("radio", { name: /江野/ }));
+    fireEvent.click(screen.getByRole("button", { name: "提交推理" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "生成案件漫画" }));
+
+    expect(screen.getByText("正在生成漫画")).toBeInTheDocument();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByAltText("案件漫画")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "保存漫画" })).toHaveAttribute("href", "https://example.com/comic.png");
+    expect(screen.queryByText("案发前")).not.toBeInTheDocument();
+    expect(screen.queryByText("关键动作")).not.toBeInTheDocument();
+    expect(screen.queryByText("伪装现场")).not.toBeInTheDocument();
+    expect(screen.queryByText("真相揭晓")).not.toBeInTheDocument();
+    expect(screen.queryByText("嫌疑人移动杯子。")).not.toBeInTheDocument();
   });
 
   it("keeps a suspect locked until its linked evidence is opened", () => {

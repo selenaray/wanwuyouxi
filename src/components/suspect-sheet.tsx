@@ -5,6 +5,19 @@ import { FormEvent, useMemo, useState } from "react";
 import { interrogateSuspect, type InterrogationMessage } from "@/features/game/api-client";
 import type { PublicSuspect, V2PlayerCase } from "@/features/game/types";
 
+const SAMPLE_QUESTIONS = [
+  "你最后一次看到那件物品时，它在什么位置？",
+  "案发前后，你有没有注意到谁靠近过它？",
+  "你为什么会记得那件物品没有变过？",
+  "你离开现场前，最后看见的是谁？",
+  "你刚才的证词里，哪一句你最确定？",
+  "现场有哪处细节让你觉得不自然？",
+  "如果有人移动过它，你觉得会留下什么痕迹？",
+  "你有没有听到或看到别人整理现场？",
+  "你说没碰过它，那你怎么知道它一直在原位？",
+  "你觉得另外两个人谁最在意那件物品？",
+];
+
 export function SuspectSheet({
   game,
   suspect,
@@ -18,12 +31,14 @@ export function SuspectSheet({
   const [messages, setMessages] = useState<InterrogationMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sampleQuestion] = useState(
+    () => SAMPLE_QUESTIONS[Math.floor(Math.random() * SAMPLE_QUESTIONS.length)],
+  );
   const usedRounds = useMemo(
     () => messages.filter((message) => message.role === "user").length,
     [messages],
   );
   const remainingRounds = Math.max(0, 3 - usedRounds);
-
   const submitQuestion = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = question.trim();
@@ -79,7 +94,7 @@ export function SuspectSheet({
           <p className="interrogation-guide">围绕时间线、物证和证词追问。嫌疑人可能闪躲，但不会替你直接揭晓答案。</p>
           <div className="interrogation-log" aria-live="polite">
             {messages.length === 0 ? (
-              <p className="empty-dialogue">试着问：“你最后一次碰到那件物品是什么时候？”</p>
+              <p className="empty-dialogue">试着问：“{sampleQuestion}”</p>
             ) : messages.map((message, index) => (
               <p key={`${message.role}-${index}`} className={`dialogue-line ${message.role}`}>
                 <span>{message.role === "user" ? "你" : suspect.name}</span>

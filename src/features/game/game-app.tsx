@@ -17,6 +17,7 @@ import { TestimonySummaryScreen } from "@/components/testimony-summary-screen";
 import { createInitialState, transitionGame } from "./game-machine";
 import {
   deleteImage,
+  generateCaseComic,
   generateStatelessCase,
   GameApiError,
   revealCase,
@@ -156,6 +157,28 @@ export function GameApp() {
     }
   };
 
+  const generateComic = async () => {
+    if (!state.caseData || !state.truth || state.comicStatus === "loading") return;
+    dispatch({ type: "COMIC_GENERATION_STARTED" });
+    try {
+      const comic = await generateCaseComic({
+        game: state.caseData,
+        truth: state.truth,
+        correctAnswerIndex: state.solutionAnswerIndex,
+      });
+      dispatch({
+        type: "COMIC_GENERATION_SUCCEEDED",
+        imageUrl: comic.imageUrl,
+        panels: comic.panels,
+      });
+    } catch (error) {
+      dispatch({
+        type: "COMIC_GENERATION_FAILED",
+        errorCode: error instanceof GameApiError ? error.code : "COMIC_GENERATION_FAILED",
+      });
+    }
+  };
+
   const replay = () => {
     if (state.mode === "live" && state.imageId) void deleteImage(state.imageId).catch(() => undefined);
     if (selectedObjectUrl.current && typeof URL.revokeObjectURL === "function") {
@@ -229,7 +252,18 @@ export function GameApp() {
         />
       )}
       {state.screen === "result" && state.caseData && state.truth && (
-        <ResultScreen game={state.caseData} truth={state.truth} firstAnswerCorrect={state.firstAnswerCorrect} elapsedSeconds={elapsedSeconds} onReplay={replay} />
+        <ResultScreen
+          game={state.caseData}
+          truth={state.truth}
+          firstAnswerCorrect={state.firstAnswerCorrect}
+          elapsedSeconds={elapsedSeconds}
+          comicStatus={state.comicStatus}
+          comicImageUrl={state.comicImageUrl}
+          comicPanels={state.comicPanels}
+          comicErrorCode={state.comicErrorCode}
+          onGenerateComic={() => { void generateComic(); }}
+          onReplay={replay}
+        />
       )}
       {state.screen === "error" && (
         <ErrorScreen
