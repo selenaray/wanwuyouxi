@@ -95,19 +95,13 @@ function imageUrlFromResponse(response: QwenImageResponse) {
   return response.output?.choices?.[0]?.message?.content?.find((item) => item.image)?.image;
 }
 
-function workspaceIdFromSkWsKey(apiKey: string) {
-  const match = apiKey.match(/^sk-ws-[A-Z]\.([A-Za-z0-9-]+)\./);
-  return match?.[1]?.toLowerCase() ?? null;
-}
-
 export function resolveDashScopeImageApiUrl(input: {
   explicitUrl?: string;
-  apiKey: string;
   workspaceId?: string;
   region?: string;
 }) {
   if (input.explicitUrl && input.explicitUrl.trim() !== "") return input.explicitUrl;
-  const workspaceId = input.workspaceId?.trim().toLowerCase() || workspaceIdFromSkWsKey(input.apiKey);
+  const workspaceId = input.workspaceId?.trim().toLowerCase();
   if (!workspaceId) return DEFAULT_QWEN_IMAGE_API_URL;
   const region = input.region?.trim() || "cn-beijing";
   return `https://${workspaceId}.${region}.maas.aliyuncs.com${QWEN_IMAGE_API_PATH}`;
@@ -165,7 +159,6 @@ export function createQwenImageComicProviderFromEnv() {
       apiKey,
       resolveDashScopeImageApiUrl({
         explicitUrl: process.env.DASHSCOPE_IMAGE_API_URL,
-        apiKey,
         workspaceId: process.env.DASHSCOPE_WORKSPACE_ID,
         region: process.env.DASHSCOPE_REGION,
       }),

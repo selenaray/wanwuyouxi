@@ -84,9 +84,12 @@ describe("QwenImageComicProvider", () => {
     vi.unstubAllEnvs();
   });
 
-  it("derives the workspace image endpoint from a new DashScope sk-ws key", () => {
+  it("uses the stable DashScope endpoint unless a workspace is explicitly configured", () => {
     expect(resolveDashScopeImageApiUrl({
-      apiKey: "sk-ws-H.ABC123.xyz.fake",
+      workspaceId: undefined,
+    })).toBe("https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation");
+    expect(resolveDashScopeImageApiUrl({
+      workspaceId: "ABC123",
     })).toBe("https://abc123.cn-beijing.maas.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation");
   });
 });
