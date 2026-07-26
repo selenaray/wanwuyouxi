@@ -123,6 +123,20 @@ function imageUrlWithRenderKey(imageUrl: string, traceId: string) {
   return `${imageUrl.split("#")[0]}#comic-${traceId}`;
 }
 
+function fallbackComicResponse(storyboard: CaseComicStoryboard, traceId: string) {
+  return Response.json({
+    ok: true,
+    data: {
+      imageUrl: imageUrlWithRenderKey("/intro-assets/comic-recap.png", traceId),
+      width: null,
+      height: null,
+      panels: storyboard.panels,
+      degraded: true,
+    },
+    traceId,
+  });
+}
+
 function portraitReferenceImages(request: Request, storyboard: CaseComicStoryboard) {
   if (!storyboard.referencePortraitKey) return [];
   const origin = new URL(request.url).origin;
@@ -146,10 +160,19 @@ export async function POST(request: Request) {
       storyboard.prompt,
       buildVariationPrompt(traceId),
     ].join("\n");
-    const image = await createQwenImageComicProviderFromEnv().generate({
-      prompt,
-      referenceImages: portraitReferenceImages(request, storyboard),
-    });
+    let image: { imageUrl: string; width: number | null; height: number | null };
+    try {
+      image = await createQwenImageComicProviderFromEnv().generate({
+        prompt,
+        referenceImages: portraitReferenceImages(request, storyboard),
+      });
+    } catch (error) {
+      if (error instanceof ProviderError && error.message === "QWEN_IMAGE_AUTH_FAILED") {
+        console.error("COMIC_GENERATION_DEGRADED", JSON.stringify({ traceId, code: error.message }));
+        return fallbackComicResponse(storyboard, traceId);
+      }
+      throw error;
+    }
 
     return Response.json({
       ok: true,

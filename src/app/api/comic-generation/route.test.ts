@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { toV2PlayerCase, V2PrivateCaseSchema } from "@/server/cases/v2-contracts";
 import { validV2Case } from "@/server/cases/v2-contracts.fixture";
+import { ProviderError } from "@/server/providers/types";
 
 const generateMock = vi.fn(async () => ({
   imageUrl: "https://example.com/case-comic.png",
@@ -74,5 +75,25 @@ describe("POST /api/comic-generation", () => {
     expect(body.ok).toBe(false);
     expect(body.error.code).toBe("INVALID_COMIC_INPUT");
     expect(createQwenImageComicProviderFromEnv).not.toHaveBeenCalled();
+  });
+
+  it("degrades to the bundled comic image when Qwen image auth is unavailable", async () => {
+    generateMock.mockRejectedValueOnce(new ProviderError("AUTH_FAILED", "QWEN_IMAGE_AUTH_FAILED"));
+    const { POST } = await import("./route");
+
+    const response = await POST(new Request("http://test/api/comic-generation", {
+      method: "POST",
+      body: JSON.stringify({
+        game: playerCase,
+        truth: "江野移动杯子取走钥匙后又将其放回。",
+        correctAnswerIndex: 2,
+      }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.degraded).toBe(true);
+    expect(body.data.imageUrl).toMatch(/^\/intro-assets\/comic-recap\.png#comic-/);
   });
 });
