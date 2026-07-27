@@ -117,6 +117,17 @@ function imageUrlFromResponse(response: QwenImageResponse) {
   return response.output?.choices?.[0]?.message?.content?.find((item) => item.image)?.image;
 }
 
+function transportErrorDetails(error: unknown) {
+  const cause = error instanceof Error && error.cause && typeof error.cause === "object"
+    ? error.cause as { code?: unknown }
+    : null;
+  return {
+    name: error instanceof Error ? error.name : typeof error,
+    message: error instanceof Error ? error.message.slice(0, 300) : null,
+    causeCode: typeof cause?.code === "string" ? cause.code : null,
+  };
+}
+
 export function resolveDashScopeImageApiUrl(input: {
   explicitUrl?: string;
   workspaceId?: string;
@@ -170,7 +181,7 @@ export class QwenImageComicProvider {
       { text: input.prompt },
     ];
     try {
-      const response = await this.options.transport.create({
+      const request: QwenImageRequest = {
         model: this.options.model,
         input: {
           messages: [{ role: "user", content }],
@@ -182,7 +193,23 @@ export class QwenImageComicProvider {
           size: this.options.size,
           watermark: false,
         },
-      }, controller.signal);
+      };
+      let response: QwenImageResponse | null = null;
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        try {
+          response = await this.options.transport.create(request, controller.signal);
+          break;
+        } catch (error) {
+          const status = typeof error === "object" && error && "status" in error ? Number(error.status) : 0;
+          const canRetry = attempt === 1 && !controller.signal.aborted && status === 0;
+          if (!canRetry) throw error;
+          console.warn("QWEN_IMAGE_TRANSPORT_RETRY", JSON.stringify({
+            attempt,
+            ...transportErrorDetails(error),
+          }));
+        }
+      }
+      if (!response) throw new Error("QWEN_IMAGE_TRANSPORT_EMPTY");
       const imageUrl = imageUrlFromResponse(response);
       if (!imageUrl) throw new ProviderError("BAD_OUTPUT", "QWEN_IMAGE_OUTPUT_INVALID");
       return {
@@ -196,6 +223,7 @@ export class QwenImageComicProvider {
       const status = typeof error === "object" && error && "status" in error ? Number(error.status) : 0;
       if (status === 401 || status === 403) throw new ProviderError("AUTH_FAILED", "QWEN_IMAGE_AUTH_FAILED");
       if (status === 429) throw new ProviderError("RATE_LIMITED", "QWEN_IMAGE_RATE_LIMITED");
+      console.error("QWEN_IMAGE_TRANSPORT_FAILED", JSON.stringify(transportErrorDetails(error)));
       throw new ProviderError("UNAVAILABLE", "QWEN_IMAGE_UNAVAILABLE");
     } finally {
       clearTimeout(timeout);

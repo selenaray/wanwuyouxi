@@ -77,6 +77,33 @@ describe("QwenImageComicProvider", () => {
     ]);
   });
 
+  it("retries once when the image transport disconnects before responding", async () => {
+    const transport: QwenImageTransport = {
+      create: vi.fn()
+        .mockRejectedValueOnce(new TypeError("fetch failed"))
+        .mockResolvedValueOnce({
+          output: {
+            choices: [{
+              message: {
+                content: [{ image: "https://example.com/retried-comic.png" }],
+              },
+            }],
+          },
+        }),
+    };
+    const provider = new QwenImageComicProvider({
+      transport,
+      model: "qwen-image-2.0-pro",
+      size: "2048*2048",
+      timeoutMs: 75_000,
+    });
+
+    await expect(provider.generate({ prompt: "生成四格漫画" })).resolves.toMatchObject({
+      imageUrl: "https://example.com/retried-comic.png",
+    });
+    expect(transport.create).toHaveBeenCalledTimes(2);
+  });
+
   it("constructs the live provider from Qwen image environment", () => {
     vi.stubEnv("QWEN_API_KEY", "test-key");
     vi.stubEnv("DASHSCOPE_IMAGE_API_URL", "https://example.com/api");
