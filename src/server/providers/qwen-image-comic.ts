@@ -68,7 +68,7 @@ class DashScopeQwenImageTransport implements QwenImageTransport {
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${this.apiKey}`,
-        ...(this.workspaceId ? { "X-DashScope-WorkspaceId": this.workspaceId } : {}),
+        ...(this.workspaceId ? { "X-DashScope-WorkSpace": this.workspaceId } : {}),
       },
       body: JSON.stringify(request),
     });
@@ -133,9 +133,9 @@ export function resolveQwenImageApiKey(env: NodeJS.ProcessEnv = process.env): {
   apiKey: string;
   source: QwenImageKeySource;
 } | null {
-  if (env.QWEN_API_KEY) return { apiKey: env.QWEN_API_KEY, source: "QWEN_API_KEY" };
   if (env.QWEN_IMAGE_API_KEY) return { apiKey: env.QWEN_IMAGE_API_KEY, source: "QWEN_IMAGE_API_KEY" };
   if (env.DASHSCOPE_API_KEY) return { apiKey: env.DASHSCOPE_API_KEY, source: "DASHSCOPE_API_KEY" };
+  if (env.QWEN_API_KEY) return { apiKey: env.QWEN_API_KEY, source: "QWEN_API_KEY" };
   return null;
 }
 

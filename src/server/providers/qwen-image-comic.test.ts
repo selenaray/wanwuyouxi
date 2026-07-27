@@ -86,16 +86,16 @@ describe("QwenImageComicProvider", () => {
     vi.unstubAllEnvs();
   });
 
-  it("prefers the verified Qwen API key before image-specific and DashScope keys", () => {
+  it("prefers image-capable keys before the general Qwen API key", () => {
     expect(resolveQwenImageApiKey({
       QWEN_API_KEY: "normal-key",
       QWEN_IMAGE_API_KEY: "image-key",
       DASHSCOPE_API_KEY: "dashscope-key",
-    })).toEqual({ apiKey: "normal-key", source: "QWEN_API_KEY" });
-    expect(resolveQwenImageApiKey({
-      QWEN_IMAGE_API_KEY: "image-key",
-      DASHSCOPE_API_KEY: "dashscope-key",
     })).toEqual({ apiKey: "image-key", source: "QWEN_IMAGE_API_KEY" });
+    expect(resolveQwenImageApiKey({
+      QWEN_API_KEY: "normal-key",
+      DASHSCOPE_API_KEY: "dashscope-key",
+    })).toEqual({ apiKey: "dashscope-key", source: "DASHSCOPE_API_KEY" });
   });
 
   it("keeps workspace endpoint settings from affecting the normal Qwen API key", () => {
