@@ -6,6 +6,7 @@ import {
   createQwenImageComicProviderFromEnv,
   QwenImageComicProvider,
   resolveDashScopeImageApiUrl,
+  resolveQwenImageApiKey,
   type QwenImageRequest,
   type QwenImageTransport,
 } from "./qwen-image-comic";
@@ -75,13 +76,25 @@ describe("QwenImageComicProvider", () => {
     ]);
   });
 
-  it("constructs the live provider from DashScope image environment", () => {
-    vi.stubEnv("DASHSCOPE_API_KEY", "test-key");
+  it("constructs the live provider from Qwen image environment", () => {
+    vi.stubEnv("QWEN_API_KEY", "test-key");
     vi.stubEnv("DASHSCOPE_IMAGE_API_URL", "https://example.com/api");
 
     expect(createQwenImageComicProviderFromEnv()).toBeInstanceOf(QwenImageComicProvider);
 
     vi.unstubAllEnvs();
+  });
+
+  it("prefers the verified Qwen API key before image-specific and DashScope keys", () => {
+    expect(resolveQwenImageApiKey({
+      QWEN_API_KEY: "normal-key",
+      QWEN_IMAGE_API_KEY: "image-key",
+      DASHSCOPE_API_KEY: "dashscope-key",
+    })).toEqual({ apiKey: "normal-key", source: "QWEN_API_KEY" });
+    expect(resolveQwenImageApiKey({
+      QWEN_IMAGE_API_KEY: "image-key",
+      DASHSCOPE_API_KEY: "dashscope-key",
+    })).toEqual({ apiKey: "image-key", source: "QWEN_IMAGE_API_KEY" });
   });
 
   it("uses the stable DashScope endpoint unless a workspace is explicitly configured", () => {

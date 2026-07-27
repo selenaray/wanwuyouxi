@@ -56,6 +56,7 @@ class DashScopeQwenImageTransport implements QwenImageTransport {
   constructor(
     private readonly apiKey: string,
     private readonly apiUrl: string,
+    private readonly workspaceId?: string,
   ) {}
 
   async create(request: QwenImageRequest, signal: AbortSignal) {
@@ -65,10 +66,28 @@ class DashScopeQwenImageTransport implements QwenImageTransport {
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${this.apiKey}`,
+        ...(this.workspaceId ? { "X-DashScope-WorkspaceId": this.workspaceId } : {}),
       },
       body: JSON.stringify(request),
     });
-    const body = await response.json() as QwenImageResponse;
+    const responseText = await response.text();
+    let body: QwenImageResponse = {};
+    try {
+      body = responseText ? JSON.parse(responseText) as QwenImageResponse : {};
+    } catch {
+      console.error("QWEN_IMAGE_PROVIDER_ERROR", JSON.stringify({
+        status: response.status,
+        code: "NON_JSON_RESPONSE",
+        message: responseText.slice(0, 500),
+        apiHost: new URL(this.apiUrl).host,
+        model: request.model,
+        referenceImageCount: request.input.messages[0].content.filter((item) => "image" in item).length,
+        workspaceConfigured: Boolean(this.workspaceId),
+      }));
+      const error = new Error("QWEN_IMAGE_NON_JSON_RESPONSE") as Error & { status?: number };
+      error.status = response.status;
+      throw error;
+    }
     if (!response.ok || body.code) {
       console.error("QWEN_IMAGE_PROVIDER_ERROR", JSON.stringify({
         status: response.status,
@@ -77,6 +96,7 @@ class DashScopeQwenImageTransport implements QwenImageTransport {
         apiHost: new URL(this.apiUrl).host,
         model: request.model,
         referenceImageCount: request.input.messages[0].content.filter((item) => "image" in item).length,
+        workspaceConfigured: Boolean(this.workspaceId),
       }));
       const error = new Error(body.message || "QWEN_IMAGE_UNAVAILABLE") as Error & { status?: number };
       error.status = response.status;
@@ -105,6 +125,13 @@ export function resolveDashScopeImageApiUrl(input: {
   if (!workspaceId) return DEFAULT_QWEN_IMAGE_API_URL;
   const region = input.region?.trim() || "cn-beijing";
   return `https://${workspaceId}.${region}.maas.aliyuncs.com${QWEN_IMAGE_API_PATH}`;
+}
+
+export function resolveQwenImageApiKey(env: NodeJS.ProcessEnv = process.env) {
+  if (env.QWEN_API_KEY) return { apiKey: env.QWEN_API_KEY, source: "QWEN_API_KEY" as const };
+  if (env.QWEN_IMAGE_API_KEY) return { apiKey: env.QWEN_IMAGE_API_KEY, source: "QWEN_IMAGE_API_KEY" as const };
+  if (env.DASHSCOPE_API_KEY) return { apiKey: env.DASHSCOPE_API_KEY, source: "DASHSCOPE_API_KEY" as const };
+  return null;
 }
 
 export class QwenImageComicProvider {
@@ -152,16 +179,23 @@ export class QwenImageComicProvider {
 }
 
 export function createQwenImageComicProviderFromEnv() {
-  const apiKey = process.env.DASHSCOPE_API_KEY ?? process.env.QWEN_IMAGE_API_KEY ?? process.env.QWEN_API_KEY;
-  if (!apiKey) throw new Error("DASHSCOPE_API_KEY_MISSING");
+  const resolvedKey = resolveQwenImageApiKey();
+  if (!resolvedKey) throw new Error("QWEN_IMAGE_API_KEY_MISSING");
+  const workspaceId = process.env.DASHSCOPE_WORKSPACE_ID?.trim() || undefined;
+  console.info("QWEN_IMAGE_KEY_SOURCE", JSON.stringify({
+    source: resolvedKey.source,
+    prefix: `${resolvedKey.apiKey.slice(0, 6)}***`,
+    workspaceConfigured: Boolean(workspaceId),
+  }));
   return new QwenImageComicProvider({
     transport: new DashScopeQwenImageTransport(
-      apiKey,
+      resolvedKey.apiKey,
       resolveDashScopeImageApiUrl({
         explicitUrl: process.env.DASHSCOPE_IMAGE_API_URL,
-        workspaceId: process.env.DASHSCOPE_WORKSPACE_ID,
+        workspaceId,
         region: process.env.DASHSCOPE_REGION,
       }),
+      workspaceId,
     ),
     model: process.env.QWEN_IMAGE_MODEL ?? DEFAULT_QWEN_IMAGE_MODEL,
     size: process.env.QWEN_IMAGE_SIZE ?? DEFAULT_QWEN_IMAGE_SIZE,

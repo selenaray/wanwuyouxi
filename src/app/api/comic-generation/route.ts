@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { z } from "zod";
 
 import { PORTRAIT_KEYS } from "@/features/game/suspect-roster";
@@ -137,10 +140,10 @@ function fallbackComicResponse(storyboard: CaseComicStoryboard, traceId: string)
   });
 }
 
-function portraitReferenceImages(request: Request, storyboard: CaseComicStoryboard) {
+function portraitReferenceImages(storyboard: CaseComicStoryboard) {
   if (!storyboard.referencePortraitKey) return [];
-  const origin = new URL(request.url).origin;
-  return [new URL(`/portraits/${storyboard.referencePortraitKey}.webp`, origin).toString()];
+  const portrait = readFileSync(join(process.cwd(), "public", "portraits", `${storyboard.referencePortraitKey}.webp`));
+  return [`data:image/webp;base64,${portrait.toString("base64")}`];
 }
 
 export async function POST(request: Request) {
@@ -164,10 +167,10 @@ export async function POST(request: Request) {
     try {
       image = await createQwenImageComicProviderFromEnv().generate({
         prompt,
-        referenceImages: portraitReferenceImages(request, storyboard),
+        referenceImages: portraitReferenceImages(storyboard),
       });
     } catch (error) {
-      if (error instanceof ProviderError && error.message === "QWEN_IMAGE_AUTH_FAILED") {
+      if (error instanceof ProviderError && error.code === "AUTH_FAILED") {
         console.error("COMIC_GENERATION_DEGRADED", JSON.stringify({ traceId, code: error.message }));
         return fallbackComicResponse(storyboard, traceId);
       }
