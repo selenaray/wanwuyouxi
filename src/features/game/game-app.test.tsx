@@ -129,7 +129,7 @@ describe("GameApp", () => {
       await Promise.resolve();
     });
     expect(screen.getByAltText("案件漫画")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "保存漫画" })).toHaveAttribute("href", "https://example.com/comic.png");
+    expect(screen.getByRole("button", { name: "保存漫画" })).toBeEnabled();
     expect(screen.queryByText("案发前")).not.toBeInTheDocument();
     expect(screen.queryByText("关键动作")).not.toBeInTheDocument();
     expect(screen.queryByText("伪装现场")).not.toBeInTheDocument();

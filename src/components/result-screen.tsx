@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import type { PlayerCase } from "@/features/game/types";
 
 type Props = {
@@ -24,9 +26,40 @@ export function ResultScreen({
   onGenerateComic,
   onReplay,
 }: Props) {
+  const [comicSaveStatus, setComicSaveStatus] = useState<"idle" | "loading" | "error">("idle");
   const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, "0");
   const seconds = String(elapsedSeconds % 60).padStart(2, "0");
   const comicButtonText = comicStatus === "success" ? "重新生成案件漫画" : "生成案件漫画";
+
+  const saveComic = async () => {
+    if (!comicImageUrl || comicSaveStatus === "loading") return;
+    setComicSaveStatus("loading");
+    try {
+      let downloadUrl = comicImageUrl;
+      let objectUrl: string | null = null;
+      if (!comicImageUrl.startsWith("/")) {
+        const response = await fetch("/api/comic-download", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ imageUrl: comicImageUrl }),
+        });
+        if (!response.ok) throw new Error("COMIC_DOWNLOAD_UNAVAILABLE");
+        objectUrl = URL.createObjectURL(await response.blob());
+        downloadUrl = objectUrl;
+      }
+
+      const anchor = document.createElement("a");
+      anchor.href = downloadUrl;
+      anchor.download = "wanwuyouxi-comic.png";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      if (objectUrl) window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
+      setComicSaveStatus("idle");
+    } catch {
+      setComicSaveStatus("error");
+    }
+  };
 
   return (
     <div className="screen result-screen">
@@ -65,9 +98,15 @@ export function ResultScreen({
             {/* Model-generated URLs can be temporary and unconfigured for next/image. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img key={comicImageUrl} src={comicImageUrl} alt="案件漫画" />
-            <a className="secondary-button comic-save-button" href={comicImageUrl} download="wanwuyouxi-comic.png" target="_blank" rel="noreferrer">
-              保存漫画
-            </a>
+            <button
+              className="secondary-button comic-save-button"
+              type="button"
+              disabled={comicSaveStatus === "loading"}
+              onClick={saveComic}
+            >
+              {comicSaveStatus === "loading" ? "正在保存" : "保存漫画"}
+            </button>
+            {comicSaveStatus === "error" && <p className="comic-error">保存失败，请重新尝试。</p>}
           </div>
         )}
       </section>
