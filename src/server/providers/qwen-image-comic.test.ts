@@ -7,6 +7,7 @@ import {
   QwenImageComicProvider,
   resolveDashScopeImageApiUrl,
   resolveQwenImageApiKey,
+  resolveQwenImageRuntimeConfig,
   type QwenImageRequest,
   type QwenImageTransport,
 } from "./qwen-image-comic";
@@ -95,6 +96,31 @@ describe("QwenImageComicProvider", () => {
       QWEN_IMAGE_API_KEY: "image-key",
       DASHSCOPE_API_KEY: "dashscope-key",
     })).toEqual({ apiKey: "image-key", source: "QWEN_IMAGE_API_KEY" });
+  });
+
+  it("keeps workspace endpoint settings from affecting the normal Qwen API key", () => {
+    expect(resolveQwenImageRuntimeConfig({
+      QWEN_API_KEY: "normal-key",
+      DASHSCOPE_WORKSPACE_ID: "bad-workspace",
+      DASHSCOPE_IMAGE_API_URL: "https://bad-workspace.cn-beijing.maas.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+    })).toMatchObject({
+      apiKey: "normal-key",
+      source: "QWEN_API_KEY",
+      apiUrl: "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+      workspaceId: undefined,
+    });
+  });
+
+  it("allows workspace routing for image-specific DashScope keys", () => {
+    expect(resolveQwenImageRuntimeConfig({
+      QWEN_IMAGE_API_KEY: "image-key",
+      DASHSCOPE_WORKSPACE_ID: "ABC123",
+    })).toMatchObject({
+      apiKey: "image-key",
+      source: "QWEN_IMAGE_API_KEY",
+      apiUrl: "https://abc123.cn-beijing.maas.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+      workspaceId: "ABC123",
+    });
   });
 
   it("uses the stable DashScope endpoint unless a workspace is explicitly configured", () => {

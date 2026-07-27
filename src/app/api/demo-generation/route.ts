@@ -18,6 +18,28 @@ function errorCode(error: unknown) {
   return "GENERATION_FAILED";
 }
 
+function isRetryableGenerationError(error: unknown) {
+  if (!(error instanceof ProviderError)) return false;
+  return ["TIMEOUT", "RATE_LIMITED", "UNAVAILABLE", "BAD_OUTPUT"].includes(error.code);
+}
+
+async function generateWithRetry(
+  input: Parameters<typeof generateStatelessCase>[0],
+  dependencies: Parameters<typeof generateStatelessCase>[1],
+) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      return await generateStatelessCase(input, dependencies);
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableGenerationError(error) || attempt === 2) throw error;
+      console.warn("LIVE_GENERATION_RETRY", JSON.stringify({ attempt, code: errorCode(error) }));
+    }
+  }
+  throw lastError;
+}
+
 export async function POST(request: Request) {
   const traceId = crypto.randomUUID();
   try {
@@ -34,26 +56,19 @@ export async function POST(request: Request) {
     const imageUrl = `data:${image.type || "image/jpeg"};base64,${bytes.toString("base64")}`;
     const hasLiveModels = Boolean(process.env.QWEN_API_KEY && process.env.DEEPSEEK_API_KEY);
     const input = { imageUrl, imageWidth: width, imageHeight: height, traceId };
-    let result;
-    try {
-      result = await generateStatelessCase(input, {
-        vision: hasLiveModels ? createQwenObservationProviderFromEnv() : new FakeVisionObservationProvider(),
-        compiler: hasLiveModels ? createDeepSeekFactbookCompilerFromEnv() : new FakeCaseFactbookCompiler(),
-        judge: hasLiveModels ? createDeepSeekFactbookJudgeFromEnv() : new FakeCaseFactbookJudge(),
-        fallbackCompiler: hasLiveModels ? new ObservationFallbackFactbookCompiler() : undefined,
-        fallbackJudge: hasLiveModels ? new FakeCaseFactbookJudge() : undefined,
-      });
-    } catch (error) {
-      if (!hasLiveModels) throw error;
-      const code = errorCode(error);
-      console.warn("LIVE_GENERATION_FALLBACK", code);
-      result = await generateStatelessCase(input, {
+    const result = hasLiveModels
+      ? await generateWithRetry(input, {
+        vision: createQwenObservationProviderFromEnv(),
+        compiler: createDeepSeekFactbookCompilerFromEnv(),
+        judge: createDeepSeekFactbookJudgeFromEnv(),
+        fallbackCompiler: new ObservationFallbackFactbookCompiler(),
+        fallbackJudge: new FakeCaseFactbookJudge(),
+      })
+      : await generateStatelessCase(input, {
         vision: new FakeVisionObservationProvider(),
         compiler: new FakeCaseFactbookCompiler(),
         judge: new FakeCaseFactbookJudge(),
       });
-      result = { ...result, degraded: true, degradationReason: code };
-    }
 
     return Response.json({ ok: true, data: result, traceId });
   } catch (error) {

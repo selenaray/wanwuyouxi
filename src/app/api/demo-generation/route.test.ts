@@ -24,27 +24,27 @@ describe("POST /api/demo-generation", () => {
     vi.clearAllMocks();
   });
 
-  it("returns a marked fallback case when live generation fails", async () => {
+  it("retries live generation once before returning the case", async () => {
     vi.stubEnv("QWEN_API_KEY", "qwen-key");
     vi.stubEnv("DEEPSEEK_API_KEY", "deepseek-key");
     const { generateStatelessCase } = await import("@/server/generation/stateless");
     vi.mocked(generateStatelessCase)
-      .mockRejectedValueOnce(new ProviderError("BAD_OUTPUT", "QWEN_OBSERVATION_SCHEMA_INVALID"))
+      .mockRejectedValueOnce(new ProviderError("UNAVAILABLE", "QWEN_OBSERVATION_UNAVAILABLE"))
       .mockResolvedValueOnce({
         case: {
           version: 2,
-          title: "Fake fallback case",
-          caseNumber: "CASE-FAKE",
-          background: "fake",
-          objective: "fake",
+          title: "Live case",
+          caseNumber: "CASE-LIVE",
+          background: "live",
+          objective: "live",
           interactionMode: "HOTSPOT",
           evidence: [],
           suspects: [],
           claims: [],
-          wrongAnswerHint: "fake",
+          wrongAnswerHint: "live",
         },
         correctAnswerIndex: 0,
-        truth: "fake",
+        truth: "live",
       } as never);
     const { POST } = await import("./route");
     const form = new FormData();
@@ -55,8 +55,26 @@ describe("POST /api/demo-generation", () => {
 
     expect(response.status).toBe(200);
     expect(body.ok).toBe(true);
-    expect(body.data.degraded).toBe(true);
-    expect(body.data.degradationReason).toBe("QWEN_OBSERVATION_SCHEMA_INVALID");
+    expect(body.data.degraded).toBeUndefined();
+    expect(generateStatelessCase).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not replace live generation failures with fake fallback cases", async () => {
+    vi.stubEnv("QWEN_API_KEY", "qwen-key");
+    vi.stubEnv("DEEPSEEK_API_KEY", "deepseek-key");
+    const { generateStatelessCase } = await import("@/server/generation/stateless");
+    vi.mocked(generateStatelessCase)
+      .mockRejectedValue(new ProviderError("UNAVAILABLE", "QWEN_OBSERVATION_UNAVAILABLE"));
+    const { POST } = await import("./route");
+    const form = new FormData();
+    form.set("image", new File([new Uint8Array([1, 2, 3])], "room.jpg", { type: "image/jpeg" }));
+
+    const response = await POST(new Request("http://test/api/demo-generation", { method: "POST", body: form }));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("QWEN_OBSERVATION_UNAVAILABLE");
     expect(generateStatelessCase).toHaveBeenCalledTimes(2);
   });
 });

@@ -45,6 +45,8 @@ type QwenImageComicProviderOptions = {
   timeoutMs: number;
 };
 
+type QwenImageKeySource = "QWEN_API_KEY" | "QWEN_IMAGE_API_KEY" | "DASHSCOPE_API_KEY";
+
 const DEFAULT_QWEN_IMAGE_MODEL = "qwen-image-2.0-pro";
 const DEFAULT_QWEN_IMAGE_SIZE = "2048*2048";
 const DEFAULT_QWEN_IMAGE_TIMEOUT_MS = 120_000;
@@ -127,11 +129,34 @@ export function resolveDashScopeImageApiUrl(input: {
   return `https://${workspaceId}.${region}.maas.aliyuncs.com${QWEN_IMAGE_API_PATH}`;
 }
 
-export function resolveQwenImageApiKey(env: NodeJS.ProcessEnv = process.env) {
-  if (env.QWEN_API_KEY) return { apiKey: env.QWEN_API_KEY, source: "QWEN_API_KEY" as const };
-  if (env.QWEN_IMAGE_API_KEY) return { apiKey: env.QWEN_IMAGE_API_KEY, source: "QWEN_IMAGE_API_KEY" as const };
-  if (env.DASHSCOPE_API_KEY) return { apiKey: env.DASHSCOPE_API_KEY, source: "DASHSCOPE_API_KEY" as const };
+export function resolveQwenImageApiKey(env: NodeJS.ProcessEnv = process.env): {
+  apiKey: string;
+  source: QwenImageKeySource;
+} | null {
+  if (env.QWEN_API_KEY) return { apiKey: env.QWEN_API_KEY, source: "QWEN_API_KEY" };
+  if (env.QWEN_IMAGE_API_KEY) return { apiKey: env.QWEN_IMAGE_API_KEY, source: "QWEN_IMAGE_API_KEY" };
+  if (env.DASHSCOPE_API_KEY) return { apiKey: env.DASHSCOPE_API_KEY, source: "DASHSCOPE_API_KEY" };
   return null;
+}
+
+export function resolveQwenImageRuntimeConfig(env: NodeJS.ProcessEnv = process.env) {
+  const key = resolveQwenImageApiKey(env);
+  if (!key) return null;
+  const shouldUseWorkspace = key.source !== "QWEN_API_KEY";
+  const workspaceId = shouldUseWorkspace ? env.DASHSCOPE_WORKSPACE_ID?.trim() || undefined : undefined;
+  const explicitUrl = shouldUseWorkspace
+    ? env.QWEN_IMAGE_API_URL ?? env.DASHSCOPE_IMAGE_API_URL
+    : env.QWEN_IMAGE_API_URL;
+
+  return {
+    ...key,
+    workspaceId,
+    apiUrl: resolveDashScopeImageApiUrl({
+      explicitUrl,
+      workspaceId,
+      region: env.DASHSCOPE_REGION,
+    }),
+  };
 }
 
 export class QwenImageComicProvider {
@@ -179,23 +204,19 @@ export class QwenImageComicProvider {
 }
 
 export function createQwenImageComicProviderFromEnv() {
-  const resolvedKey = resolveQwenImageApiKey();
-  if (!resolvedKey) throw new Error("QWEN_IMAGE_API_KEY_MISSING");
-  const workspaceId = process.env.DASHSCOPE_WORKSPACE_ID?.trim() || undefined;
+  const config = resolveQwenImageRuntimeConfig();
+  if (!config) throw new Error("QWEN_IMAGE_API_KEY_MISSING");
   console.info("QWEN_IMAGE_KEY_SOURCE", JSON.stringify({
-    source: resolvedKey.source,
-    prefix: `${resolvedKey.apiKey.slice(0, 6)}***`,
-    workspaceConfigured: Boolean(workspaceId),
+    source: config.source,
+    prefix: `${config.apiKey.slice(0, 6)}***`,
+    apiHost: new URL(config.apiUrl).host,
+    workspaceConfigured: Boolean(config.workspaceId),
   }));
   return new QwenImageComicProvider({
     transport: new DashScopeQwenImageTransport(
-      resolvedKey.apiKey,
-      resolveDashScopeImageApiUrl({
-        explicitUrl: process.env.DASHSCOPE_IMAGE_API_URL,
-        workspaceId,
-        region: process.env.DASHSCOPE_REGION,
-      }),
-      workspaceId,
+      config.apiKey,
+      config.apiUrl,
+      config.workspaceId,
     ),
     model: process.env.QWEN_IMAGE_MODEL ?? DEFAULT_QWEN_IMAGE_MODEL,
     size: process.env.QWEN_IMAGE_SIZE ?? DEFAULT_QWEN_IMAGE_SIZE,

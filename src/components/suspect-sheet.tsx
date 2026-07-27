@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { interrogateSuspect, type InterrogationMessage } from "@/features/game/api-client";
 import type { PublicSuspect, V2PlayerCase } from "@/features/game/types";
@@ -31,6 +31,7 @@ export function SuspectSheet({
   const [messages, setMessages] = useState<InterrogationMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const logRef = useRef<HTMLDivElement | null>(null);
   const [sampleQuestion] = useState(
     () => SAMPLE_QUESTIONS[Math.floor(Math.random() * SAMPLE_QUESTIONS.length)],
   );
@@ -39,6 +40,13 @@ export function SuspectSheet({
     [messages],
   );
   const remainingRounds = Math.max(0, 3 - usedRounds);
+
+  useEffect(() => {
+    const log = logRef.current;
+    if (!log) return;
+    log.scrollTop = log.scrollHeight;
+  }, [messages, busy]);
+
   const submitQuestion = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = question.trim();
@@ -92,7 +100,7 @@ export function SuspectSheet({
             <span>{remainingRounds}/3</span>
           </div>
           <p className="interrogation-guide">围绕时间线、物证和证词追问。嫌疑人可能闪躲，但不会替你直接揭晓答案。</p>
-          <div className="interrogation-log" aria-live="polite">
+          <div className="interrogation-log" ref={logRef} aria-live="polite">
             {messages.length === 0 ? (
               <p className="empty-dialogue">试着问：“{sampleQuestion}”</p>
             ) : messages.map((message, index) => (
