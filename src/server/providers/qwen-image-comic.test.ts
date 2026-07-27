@@ -101,6 +101,7 @@ describe("QwenImageComicProvider", () => {
   it("keeps workspace endpoint settings from affecting the normal Qwen API key", () => {
     expect(resolveQwenImageRuntimeConfig({
       QWEN_API_KEY: "normal-key",
+      QWEN_IMAGE_API_URL: "https://custom.example.com/api",
       DASHSCOPE_WORKSPACE_ID: "bad-workspace",
       DASHSCOPE_IMAGE_API_URL: "https://bad-workspace.cn-beijing.maas.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
     })).toMatchObject({

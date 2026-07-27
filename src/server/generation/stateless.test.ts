@@ -31,6 +31,7 @@ describe("generateStatelessCase", () => {
   });
 
   it("falls back to an observation-grounded case when live factbook generation fails", async () => {
+    let compileCalls = 0;
     const result = await generateStatelessCase({
       imageUrl: "data:image/jpeg;base64,AA==",
       imageWidth: 1200,
@@ -40,6 +41,7 @@ describe("generateStatelessCase", () => {
       vision: new FakeVisionObservationProvider(),
       compiler: {
         async compileCase() {
+          compileCalls += 1;
           throw new ProviderError("TIMEOUT", "DEEPSEEK_FACTBOOK_TIMEOUT");
         },
         async repairCase() {
@@ -51,11 +53,42 @@ describe("generateStatelessCase", () => {
       fallbackJudge: new FakeCaseFactbookJudge(),
     });
 
+    expect(compileCalls).toBe(2);
     expect(result.degraded).toBe(true);
     expect(result.case.title).not.toBe("现场第三处破绽");
     expect(result.case.evidence.map((item) => item.objectName)).toEqual(["台灯", "书本", "杯子"]);
     expect(new Set(result.case.suspects.map((suspect) => suspect.name)).size).toBe(3);
     expect(["台灯", "书本", "杯子"].some((objectName) => result.truth.includes(objectName))).toBe(true);
+  });
+
+  it("retries live factbook generation before using the observation fallback", async () => {
+    let compileCalls = 0;
+    const compiler = new FakeCaseFactbookCompiler();
+    const result = await generateStatelessCase({
+      imageUrl: "data:image/jpeg;base64,AA==",
+      imageWidth: 1200,
+      imageHeight: 900,
+      traceId: "trace-demo",
+    }, {
+      vision: new FakeVisionObservationProvider(),
+      compiler: {
+        async compileCase(input) {
+          compileCalls += 1;
+          if (compileCalls === 1) throw new ProviderError("BAD_OUTPUT", "DEEPSEEK_FACTBOOK_OUTPUT_INVALID");
+          return compiler.compileCase(input);
+        },
+        async repairCase(input) {
+          return compiler.repairCase(input);
+        },
+      },
+      judge: new FakeCaseFactbookJudge(),
+      fallbackCompiler: new ObservationFallbackFactbookCompiler(),
+      fallbackJudge: new FakeCaseFactbookJudge(),
+    });
+
+    expect(compileCalls).toBe(2);
+    expect(result.degraded).toBe(false);
+    expect(result.truth).toContain("江野移动杯子");
   });
 
   it("does not always place the fallback correct answer in the third slot", async () => {

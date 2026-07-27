@@ -61,6 +61,31 @@ async function compilePublishableCase(input: {
   return privateCase;
 }
 
+async function compilePublishableCaseWithRetry(input: {
+  compiler: CaseFactbookCompiler;
+  judge: CaseFactbookJudge;
+  observation: Extract<VisionObservation, { decision: "PASS" }>;
+  imageAspect: number;
+  traceId: string;
+  attempts: number;
+}) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= input.attempts; attempt += 1) {
+    try {
+      return await compilePublishableCase(input);
+    } catch (error) {
+      lastError = error;
+      if (attempt === input.attempts) throw error;
+      console.warn("CASE_FACTBOOK_RETRY", JSON.stringify({
+        attempt,
+        code: stableErrorCode(error),
+        traceId: input.traceId,
+      }));
+    }
+  }
+  throw lastError;
+}
+
 function serializeResult(input: {
   privateCase: V2PrivateCase;
   degraded: boolean;
@@ -89,12 +114,13 @@ export async function generateStatelessCase(input: Input, dependencies: Dependen
   if (observation.decision !== "PASS") throw new Error(observation.reasonCode);
 
   try {
-    const privateCase = await compilePublishableCase({
+    const privateCase = await compilePublishableCaseWithRetry({
       compiler: dependencies.compiler,
       judge: dependencies.judge,
       observation,
       imageAspect: input.imageWidth / input.imageHeight,
       traceId: input.traceId,
+      attempts: dependencies.fallbackCompiler ? 2 : 1,
     });
     return serializeResult({ privateCase, degraded: false });
   } catch (error) {
