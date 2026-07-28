@@ -369,9 +369,7 @@ export function createDeepSeekFactbookCompilerFromEnv() {
   return new DeepSeekFactbookCompiler({
     transport: createDeepSeekFactbookTransportFromEnv(),
     model: process.env.DEEPSEEK_MODEL ?? "deepseek-v4-flash",
-    timeoutMs: readFactbookTimeoutMs(
-      process.env.DEEPSEEK_FACTBOOK_TIMEOUT_MS ?? process.env.GENERATION_TIMEOUT_MS,
-    ),
+    timeoutMs: readFactbookTimeoutMs(process.env.DEEPSEEK_FACTBOOK_TIMEOUT_MS),
   });
 }
 
