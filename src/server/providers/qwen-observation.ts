@@ -63,7 +63,7 @@ type QwenObservationProviderOptions = {
   timeoutMs: number;
 };
 
-const DEFAULT_QWEN_OBSERVATION_TIMEOUT_MS = 75_000;
+const DEFAULT_QWEN_OBSERVATION_TIMEOUT_MS = 120_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

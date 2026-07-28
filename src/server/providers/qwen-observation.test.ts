@@ -154,7 +154,7 @@ describe("QwenObservationProvider", () => {
 
     const provider = createQwenObservationProviderFromEnv();
 
-    expect((provider as unknown as { options: { timeoutMs: number } }).options.timeoutMs).toBe(75_000);
+    expect((provider as unknown as { options: { timeoutMs: number } }).options.timeoutMs).toBe(120_000);
     vi.unstubAllEnvs();
   });
 

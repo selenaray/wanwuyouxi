@@ -24,7 +24,7 @@ type CompilerOptions = {
   timeoutMs: number;
 };
 
-const DEFAULT_DEEPSEEK_FACTBOOK_TIMEOUT_MS = 75_000;
+const DEFAULT_DEEPSEEK_FACTBOOK_TIMEOUT_MS = 60_000;
 
 type PassObservation = Extract<VisionObservation, { decision: "PASS" }>;
 

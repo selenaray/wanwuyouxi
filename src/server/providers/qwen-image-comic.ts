@@ -49,7 +49,7 @@ type QwenImageKeySource = "QWEN_API_KEY" | "QWEN_IMAGE_API_KEY" | "DASHSCOPE_API
 
 const DEFAULT_QWEN_IMAGE_MODEL = "qwen-image-2.0-pro";
 const DEFAULT_QWEN_IMAGE_SIZE = "2048*2048";
-const DEFAULT_QWEN_IMAGE_TIMEOUT_MS = 120_000;
+const DEFAULT_QWEN_IMAGE_TIMEOUT_MS = 150_000;
 const DEFAULT_QWEN_IMAGE_API_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
 const QWEN_IMAGE_API_PATH = "/api/v1/services/aigc/multimodal-generation/generation";
 const NEGATIVE_PROMPT = "文字，字幕，对白气泡，水印，logo，低清晰度，低画质，肢体畸形，手指畸形，脸部崩坏，构图混乱，过度明亮，过度饱和";

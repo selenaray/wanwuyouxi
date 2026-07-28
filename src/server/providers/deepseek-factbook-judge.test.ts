@@ -118,6 +118,6 @@ describe("DeepSeekFactbookJudge", () => {
 
     const judge = createDeepSeekFactbookJudgeFromEnv();
 
-    expect((judge as unknown as { options: { timeoutMs: number } }).options.timeoutMs).toBe(75_000);
+    expect((judge as unknown as { options: { timeoutMs: number } }).options.timeoutMs).toBe(60_000);
   });
 });

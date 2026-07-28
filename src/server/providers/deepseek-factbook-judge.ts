@@ -39,7 +39,7 @@ type JudgeOptions = {
   timeoutMs: number;
 };
 
-const DEFAULT_DEEPSEEK_FACTBOOK_TIMEOUT_MS = 75_000;
+const DEFAULT_DEEPSEEK_FACTBOOK_TIMEOUT_MS = 60_000;
 
 function readFactbookTimeoutMs(value: string | undefined) {
   const parsed = typeof value === "string" && value.trim() !== "" ? Number(value) : NaN;

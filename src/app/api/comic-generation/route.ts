@@ -10,7 +10,7 @@ import { buildCaseComicStoryboard } from "@/server/comic/storyboard";
 import { createQwenImageComicProviderFromEnv } from "@/server/providers";
 import { ProviderError } from "@/server/providers/types";
 
-export const maxDuration = 180;
+export const maxDuration = 300;
 
 const EvidenceSchema = z.object({
   id: z.string(),

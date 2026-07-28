@@ -10,7 +10,7 @@ import {
 } from "@/server/providers";
 import { ProviderError } from "@/server/providers/types";
 
-export const maxDuration = 180;
+export const maxDuration = 300;
 
 function errorCode(error: unknown) {
   if (error instanceof ProviderError) return error.message;
