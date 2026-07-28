@@ -1,3 +1,5 @@
+import https from "node:https";
+
 import { ProviderError } from "./types";
 
 export type QwenImageRequest = {
@@ -53,6 +55,78 @@ const DEFAULT_QWEN_IMAGE_TIMEOUT_MS = 150_000;
 const DEFAULT_QWEN_IMAGE_API_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
 const QWEN_IMAGE_API_PATH = "/api/v1/services/aigc/multimodal-generation/generation";
 const NEGATIVE_PROMPT = "文字，字幕，对白气泡，水印，logo，低清晰度，低画质，肢体畸形，手指畸形，脸部崩坏，构图混乱，过度明亮，过度饱和";
+const QWEN_IMAGE_CONNECT_TIMEOUT_MS = 45_000;
+const dashScopeHttpsAgent = new https.Agent({
+  family: 4,
+  keepAlive: true,
+});
+
+type DashScopeHttpResponse = {
+  ok: boolean;
+  status: number;
+  text: string;
+};
+
+function postDashScopeJson(input: {
+  apiUrl: string;
+  apiKey: string;
+  workspaceId?: string;
+  body: string;
+  signal: AbortSignal;
+}): Promise<DashScopeHttpResponse> {
+  return new Promise((resolve, reject) => {
+    let connectTimer: ReturnType<typeof setTimeout> | undefined;
+    const clearConnectTimer = () => {
+      if (connectTimer) clearTimeout(connectTimer);
+      connectTimer = undefined;
+    };
+    const request = https.request(input.apiUrl, {
+      method: "POST",
+      agent: dashScopeHttpsAgent,
+      family: 4,
+      signal: input.signal,
+      headers: {
+        "content-type": "application/json",
+        "content-length": Buffer.byteLength(input.body),
+        authorization: `Bearer ${input.apiKey}`,
+        ...(input.workspaceId ? { "X-DashScope-WorkSpace": input.workspaceId } : {}),
+      },
+    }, (response) => {
+      clearConnectTimer();
+      const chunks: Buffer[] = [];
+      response.on("data", (chunk: Buffer | string) => {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      });
+      response.on("end", () => {
+        const status = response.statusCode ?? 0;
+        resolve({
+          ok: status >= 200 && status < 300,
+          status,
+          text: Buffer.concat(chunks).toString("utf8"),
+        });
+      });
+      response.on("error", reject);
+    });
+
+    connectTimer = setTimeout(() => {
+      const error = new Error("QWEN_IMAGE_CONNECT_TIMEOUT") as Error & { code?: string };
+      error.code = "ETIMEDOUT";
+      request.destroy(error);
+    }, QWEN_IMAGE_CONNECT_TIMEOUT_MS);
+    request.on("socket", (socket) => {
+      if (!socket.connecting) {
+        clearConnectTimer();
+        return;
+      }
+      socket.once("secureConnect", clearConnectTimer);
+    });
+    request.on("error", (error) => {
+      clearConnectTimer();
+      reject(error);
+    });
+    request.end(input.body);
+  });
+}
 
 class DashScopeQwenImageTransport implements QwenImageTransport {
   constructor(
@@ -62,25 +136,21 @@ class DashScopeQwenImageTransport implements QwenImageTransport {
   ) {}
 
   async create(request: QwenImageRequest, signal: AbortSignal) {
-    const response = await fetch(this.apiUrl, {
-      method: "POST",
+    const response = await postDashScopeJson({
+      apiUrl: this.apiUrl,
+      apiKey: this.apiKey,
+      workspaceId: this.workspaceId,
       signal,
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${this.apiKey}`,
-        ...(this.workspaceId ? { "X-DashScope-WorkSpace": this.workspaceId } : {}),
-      },
       body: JSON.stringify(request),
     });
-    const responseText = await response.text();
     let body: QwenImageResponse = {};
     try {
-      body = responseText ? JSON.parse(responseText) as QwenImageResponse : {};
+      body = response.text ? JSON.parse(response.text) as QwenImageResponse : {};
     } catch {
       console.error("QWEN_IMAGE_PROVIDER_ERROR", JSON.stringify({
         status: response.status,
         code: "NON_JSON_RESPONSE",
-        message: responseText.slice(0, 500),
+        message: response.text.slice(0, 500),
         apiHost: new URL(this.apiUrl).host,
         model: request.model,
         referenceImageCount: request.input.messages[0].content.filter((item) => "image" in item).length,
