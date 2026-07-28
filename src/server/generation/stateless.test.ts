@@ -53,7 +53,7 @@ describe("generateStatelessCase", () => {
       fallbackJudge: new FakeCaseFactbookJudge(),
     });
 
-    expect(compileCalls).toBe(2);
+    expect(compileCalls).toBe(1);
     expect(result.degraded).toBe(true);
     expect(result.case.title).not.toBe("现场第三处破绽");
     expect(result.case.evidence.map((item) => item.objectName)).toEqual(["台灯", "书本", "杯子"]);

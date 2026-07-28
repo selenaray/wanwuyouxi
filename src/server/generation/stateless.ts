@@ -75,7 +75,12 @@ async function compilePublishableCaseWithRetry(input: {
       return await compilePublishableCase(input);
     } catch (error) {
       lastError = error;
-      if (attempt === input.attempts) throw error;
+      if (
+        attempt === input.attempts
+        || error instanceof ProviderError && error.code === "TIMEOUT"
+      ) {
+        throw error;
+      }
       console.warn("CASE_FACTBOOK_RETRY", JSON.stringify({
         attempt,
         code: stableErrorCode(error),

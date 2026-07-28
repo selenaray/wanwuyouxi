@@ -334,4 +334,14 @@ describe("DeepSeekFactbookCompiler", () => {
 
     expect((compiler as unknown as { options: { timeoutMs: number } }).options.timeoutMs).toBe(75_000);
   });
+
+  it("uses a dedicated factbook timeout instead of the shared generation timeout", () => {
+    vi.stubEnv("DEEPSEEK_API_KEY", "test-key");
+    vi.stubEnv("GENERATION_TIMEOUT_MS", "30000");
+    vi.stubEnv("DEEPSEEK_FACTBOOK_TIMEOUT_MS", "75000");
+
+    const compiler = createDeepSeekFactbookCompilerFromEnv();
+
+    expect((compiler as unknown as { options: { timeoutMs: number } }).options.timeoutMs).toBe(75_000);
+  });
 });
