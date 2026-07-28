@@ -42,6 +42,18 @@ class OpenAIQwenObservationTransport implements QwenObservationTransport {
   }
 }
 
+function transportErrorDetails(error: unknown) {
+  const cause = error instanceof Error && error.cause && typeof error.cause === "object"
+    ? error.cause as { code?: unknown }
+    : null;
+  return {
+    name: error instanceof Error ? error.name : typeof error,
+    message: error instanceof Error ? error.message.slice(0, 300) : null,
+    status: typeof error === "object" && error && "status" in error ? Number(error.status) : null,
+    causeCode: typeof cause?.code === "string" ? cause.code : null,
+  };
+}
+
 type QwenObservationProviderOptions = {
   transport: QwenObservationTransport;
   model: string;
@@ -166,6 +178,7 @@ export class QwenObservationProvider implements VisionObservationProvider {
       const status = typeof error === "object" && error && "status" in error ? Number(error.status) : 0;
       if (status === 401 || status === 403) throw new ProviderError("AUTH_FAILED", "QWEN_OBSERVATION_AUTH_FAILED");
       if (status === 429) throw new ProviderError("RATE_LIMITED", "QWEN_OBSERVATION_RATE_LIMITED");
+      console.error("QWEN_OBSERVATION_TRANSPORT_FAILED", JSON.stringify(transportErrorDetails(error)));
       throw new ProviderError("UNAVAILABLE", "QWEN_OBSERVATION_UNAVAILABLE");
     } finally {
       clearTimeout(timeout);
@@ -186,7 +199,9 @@ export function createQwenObservationProviderFromEnv() {
   return new QwenObservationProvider({
     transport: new OpenAIQwenObservationTransport(
       apiKey,
-      process.env.QWEN_BASE_URL ?? "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      process.env.QWEN_OBSERVATION_BASE_URL
+        ?? process.env.QWEN_BASE_URL
+        ?? "https://dashscope.aliyuncs.com/compatible-mode/v1",
     ),
     model: process.env.QWEN_VISION_MODEL ?? "qwen3-vl-plus",
     timeoutMs: readGenerationTimeoutMs(

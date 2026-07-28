@@ -169,6 +169,20 @@ describe("QwenObservationProvider", () => {
     vi.unstubAllEnvs();
   });
 
+  it("uses a dedicated observation endpoint without changing the shared Qwen endpoint", () => {
+    vi.stubEnv("QWEN_API_KEY", "test-key");
+    vi.stubEnv("QWEN_BASE_URL", "https://shared.example/v1");
+    vi.stubEnv("QWEN_OBSERVATION_BASE_URL", "https://vision.example/v1");
+
+    const provider = createQwenObservationProviderFromEnv();
+    const transport = (provider as unknown as {
+      options: { transport: { client: { baseURL: string } } };
+    }).options.transport;
+
+    expect(transport.client.baseURL).toBe("https://vision.example/v1");
+    vi.unstubAllEnvs();
+  });
+
   it.each([
     ["x", -1],
     ["x", 101],
