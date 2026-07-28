@@ -158,6 +158,17 @@ describe("QwenObservationProvider", () => {
     vi.unstubAllEnvs();
   });
 
+  it("uses a dedicated observation timeout instead of the shared generation timeout", () => {
+    vi.stubEnv("QWEN_API_KEY", "test-key");
+    vi.stubEnv("GENERATION_TIMEOUT_MS", "30000");
+    vi.stubEnv("QWEN_OBSERVATION_TIMEOUT_MS", "75000");
+
+    const provider = createQwenObservationProviderFromEnv();
+
+    expect((provider as unknown as { options: { timeoutMs: number } }).options.timeoutMs).toBe(75_000);
+    vi.unstubAllEnvs();
+  });
+
   it.each([
     ["x", -1],
     ["x", 101],

@@ -189,6 +189,8 @@ export function createQwenObservationProviderFromEnv() {
       process.env.QWEN_BASE_URL ?? "https://dashscope.aliyuncs.com/compatible-mode/v1",
     ),
     model: process.env.QWEN_VISION_MODEL ?? "qwen3-vl-plus",
-    timeoutMs: readGenerationTimeoutMs(process.env.GENERATION_TIMEOUT_MS),
+    timeoutMs: readGenerationTimeoutMs(
+      process.env.QWEN_OBSERVATION_TIMEOUT_MS ?? process.env.GENERATION_TIMEOUT_MS,
+    ),
   });
 }

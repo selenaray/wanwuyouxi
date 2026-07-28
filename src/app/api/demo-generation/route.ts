@@ -20,7 +20,7 @@ function errorCode(error: unknown) {
 
 function isRetryableGenerationError(error: unknown) {
   if (!(error instanceof ProviderError)) return false;
-  return ["TIMEOUT", "RATE_LIMITED", "UNAVAILABLE", "BAD_OUTPUT"].includes(error.code);
+  return ["RATE_LIMITED", "UNAVAILABLE", "BAD_OUTPUT"].includes(error.code);
 }
 
 async function generateWithRetry(

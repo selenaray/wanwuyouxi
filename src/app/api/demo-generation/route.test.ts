@@ -77,4 +77,22 @@ describe("POST /api/demo-generation", () => {
     expect(body.error.code).toBe("QWEN_OBSERVATION_UNAVAILABLE");
     expect(generateStatelessCase).toHaveBeenCalledTimes(2);
   });
+
+  it("does not restart the full generation pipeline after an observation timeout", async () => {
+    vi.stubEnv("QWEN_API_KEY", "qwen-key");
+    vi.stubEnv("DEEPSEEK_API_KEY", "deepseek-key");
+    const { generateStatelessCase } = await import("@/server/generation/stateless");
+    vi.mocked(generateStatelessCase)
+      .mockRejectedValue(new ProviderError("TIMEOUT", "QWEN_OBSERVATION_TIMEOUT"));
+    const { POST } = await import("./route");
+    const form = new FormData();
+    form.set("image", new File([new Uint8Array([1, 2, 3])], "room.jpg", { type: "image/jpeg" }));
+
+    const response = await POST(new Request("http://test/api/demo-generation", { method: "POST", body: form }));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe("QWEN_OBSERVATION_TIMEOUT");
+    expect(generateStatelessCase).toHaveBeenCalledTimes(1);
+  });
 });
