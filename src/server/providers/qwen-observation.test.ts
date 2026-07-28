@@ -6,6 +6,7 @@ import { validObservation } from "@/server/cases/v2-contracts.fixture";
 
 import {
   createQwenObservationProviderFromEnv,
+  DashScopeQwenObservationTransport,
   QwenObservationProvider,
   type QwenObservationRequest,
   type QwenObservationTransport,
@@ -181,6 +182,75 @@ describe("QwenObservationProvider", () => {
 
     expect(transport.client.baseURL).toBe("https://vision.example/v1");
     vi.unstubAllEnvs();
+  });
+
+  it("uses the native multimodal endpoint when a workspace is configured", () => {
+    vi.stubEnv("QWEN_API_KEY", "test-key");
+    vi.stubEnv("DASHSCOPE_WORKSPACE_ID", "LLM-Workspace");
+    vi.stubEnv("DASHSCOPE_REGION", "cn-beijing");
+
+    const provider = createQwenObservationProviderFromEnv();
+    const transport = (provider as unknown as {
+      options: { transport: QwenObservationTransport };
+    }).options.transport;
+
+    expect(transport).toBeInstanceOf(DashScopeQwenObservationTransport);
+    expect(transport).toMatchObject({
+      apiUrl: "https://llm-workspace.cn-beijing.maas.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+      workspaceId: "LLM-Workspace",
+    });
+    vi.unstubAllEnvs();
+  });
+
+  it("maps the OpenAI-compatible observation request to DashScope native content", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      output: {
+        choices: [{
+          message: { content: [{ text: JSON.stringify(validObservation) }] },
+        }],
+      },
+    })));
+    vi.stubGlobal("fetch", fetchMock);
+    const transport = new DashScopeQwenObservationTransport(
+      "test-key",
+      "https://vision.example/api",
+      "llm-workspace",
+    );
+
+    const response = await transport.create({
+      model: "qwen3-vl-plus",
+      enable_thinking: false,
+      max_tokens: 2048,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: "Return JSON." },
+        {
+          role: "user",
+          content: [
+            { type: "image_url", image_url: { url: "data:image/jpeg;base64,AA==" } },
+            { type: "text", text: "Observe." },
+          ],
+        },
+      ],
+    }, new AbortController().signal);
+
+    expect(response.content).toBe(JSON.stringify(validObservation));
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
+      input: {
+        messages: [
+          { role: "system", content: [{ text: "Return JSON." }] },
+          {
+            role: "user",
+            content: [
+              { image: "data:image/jpeg;base64,AA==" },
+              { text: "Observe." },
+            ],
+          },
+        ],
+      },
+      parameters: { result_format: "message", enable_thinking: false, max_tokens: 2048 },
+    });
+    vi.unstubAllGlobals();
   });
 
   it.each([

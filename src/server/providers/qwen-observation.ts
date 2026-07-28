@@ -26,6 +26,18 @@ export interface QwenObservationTransport {
   create(request: QwenObservationRequest, signal: AbortSignal): Promise<{ content: string }>;
 }
 
+type DashScopeObservationResponse = {
+  output?: {
+    choices?: Array<{
+      message?: {
+        content?: Array<{ text?: string }>;
+      };
+    }>;
+  };
+  code?: string;
+  message?: string;
+};
+
 class OpenAIQwenObservationTransport implements QwenObservationTransport {
   private readonly client: OpenAI;
 
@@ -39,6 +51,53 @@ class OpenAIQwenObservationTransport implements QwenObservationTransport {
       { signal },
     );
     return { content: completion.choices[0]?.message.content ?? "" };
+  }
+}
+
+export class DashScopeQwenObservationTransport implements QwenObservationTransport {
+  constructor(
+    private readonly apiKey: string,
+    private readonly apiUrl: string,
+    private readonly workspaceId?: string,
+  ) {}
+
+  async create(request: QwenObservationRequest, signal: AbortSignal) {
+    const response = await fetch(this.apiUrl, {
+      method: "POST",
+      signal,
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${this.apiKey}`,
+        ...(this.workspaceId ? { "X-DashScope-WorkSpace": this.workspaceId } : {}),
+      },
+      body: JSON.stringify({
+        model: request.model,
+        input: {
+          messages: request.messages.map((message) => ({
+            role: message.role,
+            content: typeof message.content === "string"
+              ? [{ text: message.content }]
+              : message.content.map((item) => "text" in item
+                ? { text: item.text }
+                : { image: item.image_url.url }),
+          })),
+        },
+        parameters: {
+          result_format: "message",
+          enable_thinking: request.enable_thinking,
+          max_tokens: request.max_tokens,
+        },
+      }),
+    });
+    const body = await response.json() as DashScopeObservationResponse;
+    if (!response.ok || body.code) {
+      const error = new Error(body.message || "QWEN_OBSERVATION_UNAVAILABLE") as Error & { status?: number };
+      error.status = response.status;
+      throw error;
+    }
+    return {
+      content: body.output?.choices?.[0]?.message?.content?.find((item) => item.text)?.text ?? "",
+    };
   }
 }
 
@@ -61,6 +120,7 @@ type QwenObservationProviderOptions = {
 };
 
 const DEFAULT_QWEN_OBSERVATION_TIMEOUT_MS = 75_000;
+const QWEN_OBSERVATION_API_PATH = "/api/v1/services/aigc/multimodal-generation/generation";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -196,13 +256,20 @@ function readGenerationTimeoutMs(value: string | undefined) {
 export function createQwenObservationProviderFromEnv() {
   const apiKey = process.env.QWEN_API_KEY;
   if (!apiKey) throw new Error("QWEN_API_KEY_MISSING");
+  const workspaceId = process.env.DASHSCOPE_WORKSPACE_ID?.trim() || undefined;
+  const observationApiUrl = process.env.QWEN_OBSERVATION_API_URL?.trim()
+    || (workspaceId
+      ? `https://${workspaceId.toLowerCase()}.${process.env.DASHSCOPE_REGION?.trim() || "cn-beijing"}.maas.aliyuncs.com${QWEN_OBSERVATION_API_PATH}`
+      : undefined);
   return new QwenObservationProvider({
-    transport: new OpenAIQwenObservationTransport(
-      apiKey,
-      process.env.QWEN_OBSERVATION_BASE_URL
-        ?? process.env.QWEN_BASE_URL
-        ?? "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    ),
+    transport: observationApiUrl
+      ? new DashScopeQwenObservationTransport(apiKey, observationApiUrl, workspaceId)
+      : new OpenAIQwenObservationTransport(
+        apiKey,
+        process.env.QWEN_OBSERVATION_BASE_URL
+          ?? process.env.QWEN_BASE_URL
+          ?? "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      ),
     model: process.env.QWEN_VISION_MODEL ?? "qwen3-vl-plus",
     timeoutMs: readGenerationTimeoutMs(
       process.env.QWEN_OBSERVATION_TIMEOUT_MS ?? process.env.GENERATION_TIMEOUT_MS,
