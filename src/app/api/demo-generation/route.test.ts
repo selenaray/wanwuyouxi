@@ -59,6 +59,12 @@ describe("POST /api/demo-generation", () => {
     expect(generateStatelessCase).toHaveBeenCalledTimes(2);
   });
 
+  it("runs live scene reconstruction outside the unstable Hong Kong egress", async () => {
+    const { preferredRegion } = await import("./route");
+
+    expect(preferredRegion).toBe("sin1");
+  });
+
   it("does not replace live generation failures with fake fallback cases", async () => {
     vi.stubEnv("QWEN_API_KEY", "qwen-key");
     vi.stubEnv("DEEPSEEK_API_KEY", "deepseek-key");

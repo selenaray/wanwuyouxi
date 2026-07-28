@@ -11,6 +11,7 @@ import {
 import { ProviderError } from "@/server/providers/types";
 
 export const maxDuration = 180;
+export const preferredRegion = "sin1";
 
 function errorCode(error: unknown) {
   if (error instanceof ProviderError) return error.message;
