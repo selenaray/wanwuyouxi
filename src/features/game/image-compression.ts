@@ -14,25 +14,61 @@ export function shouldUseServerHeicFallback(file: File) {
   return ["image/heic", "image/heif"].includes(file.type) && file.size <= MAX_BYTES;
 }
 
+async function decodeWithImageElement(file: File) {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("IMAGE_DECODE_FAILED"));
+      image.src = objectUrl;
+    });
+    return {
+      source: image as CanvasImageSource,
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+      close: () => URL.revokeObjectURL(objectUrl),
+    };
+  } catch (error) {
+    URL.revokeObjectURL(objectUrl);
+    throw error;
+  }
+}
+
 export async function prepareImageForUpload(file: File): Promise<File> {
   if (shouldUseServerHeicFallback(file)) return file;
   if (file.size > MAX_SOURCE_BYTES) throw new Error("IMAGE_TOO_LARGE");
 
-  let bitmap: ImageBitmap;
+  let decoded: {
+    source: CanvasImageSource;
+    width: number;
+    height: number;
+    close: () => void;
+  };
   try {
-    bitmap = await createImageBitmap(file);
+    if (typeof createImageBitmap !== "function") throw new Error("IMAGE_BITMAP_UNAVAILABLE");
+    const bitmap = await createImageBitmap(file);
+    decoded = {
+      source: bitmap,
+      width: bitmap.width,
+      height: bitmap.height,
+      close: () => bitmap.close(),
+    };
   } catch {
-    throw new Error("IMAGE_DECODE_FAILED");
+    decoded = await decodeWithImageElement(file);
   }
 
-  const dimensions = calculateResizeDimensions(bitmap.width, bitmap.height);
+  const dimensions = calculateResizeDimensions(decoded.width, decoded.height);
   const canvas = document.createElement("canvas");
   canvas.width = dimensions.width;
   canvas.height = dimensions.height;
   const context = canvas.getContext("2d");
-  if (!context) throw new Error("IMAGE_DECODE_FAILED");
-  context.drawImage(bitmap, 0, 0, dimensions.width, dimensions.height);
-  bitmap.close();
+  if (!context) {
+    decoded.close();
+    throw new Error("IMAGE_DECODE_FAILED");
+  }
+  context.drawImage(decoded.source, 0, 0, dimensions.width, dimensions.height);
+  decoded.close();
 
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(

@@ -28,6 +28,18 @@ const errorCopy: Record<string, { title: string; description: string }> = {
   NOT_A_SPACE: { title: "没有识别到现场", description: "请拍摄桌面、房间或咖啡馆角落等完整空间。" },
   TOO_FEW_OBJECTS: { title: "现场物品太少", description: "请换一处至少包含五件明显物品的空间。" },
   UNSAFE: { title: "这张照片无法使用", description: "请避免人脸、证件、聊天记录或其他敏感内容。" },
+  IMAGE_DECODE_FAILED: {
+    title: "照片读取失败",
+    description: "浏览器无法读取这张照片，请换成 JPEG 或 PNG 后重新扫描。",
+  },
+  IMAGE_ENCODE_FAILED: {
+    title: "照片处理失败",
+    description: "照片压缩没有完成，请重新选择照片后再试。",
+  },
+  IMAGE_TOO_LARGE: {
+    title: "照片文件过大",
+    description: "请换一张 15 MB 以内的照片后重新扫描。",
+  },
 };
 
 export function ErrorScreen({ errorCode, onRetry }: { errorCode: string | null; onRetry: () => void }) {

@@ -79,13 +79,32 @@ function normalizeVisualFactId(index: number) {
   return `vf-${index + 1}`;
 }
 
+const REJECTION_REASON_CODES = [
+  "TOO_DARK",
+  "BLURRY",
+  "NOT_A_SPACE",
+  "TOO_FEW_OBJECTS",
+  "UNSAFE",
+] as const;
+
+function isRejectionReasonCode(value: unknown): value is typeof REJECTION_REASON_CODES[number] {
+  return typeof value === "string"
+    && REJECTION_REASON_CODES.includes(value as typeof REJECTION_REASON_CODES[number]);
+}
+
 function normalizeObservation(value: unknown): unknown {
   if (!isRecord(value)) return value;
+  const rawDecision = typeof value.decision === "string" ? value.decision.toUpperCase() : value.decision;
+  const directReasonCode = isRejectionReasonCode(rawDecision) ? rawDecision : null;
 
   return {
     ...value,
-    decision: typeof value.decision === "string" ? value.decision.toUpperCase() : value.decision,
-    ...(typeof value.reasonCode === "string"
+    decision: directReasonCode
+      ? directReasonCode === "UNSAFE" ? "BLOCK" : "RETRY"
+      : rawDecision,
+    ...(directReasonCode
+      ? { reasonCode: directReasonCode }
+      : typeof value.reasonCode === "string"
       ? { reasonCode: value.reasonCode.toUpperCase() }
       : {}),
     visualFacts: Array.isArray(value.visualFacts)

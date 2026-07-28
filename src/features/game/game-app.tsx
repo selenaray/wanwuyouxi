@@ -86,9 +86,14 @@ export function GameApp() {
         }
       } catch (error) {
         if (!cancelled) {
+          const errorCode = error instanceof GameApiError
+            ? error.code
+            : error instanceof Error && /^[A-Z0-9_]{1,80}$/.test(error.message)
+              ? error.message
+              : "GENERATION_FAILED";
           dispatch({
             type: "SCAN_FAILED",
-            errorCode: error instanceof GameApiError ? error.code : "GENERATION_FAILED",
+            errorCode,
           });
         }
       } finally {

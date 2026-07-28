@@ -112,6 +112,42 @@ describe("QwenObservationProvider", () => {
     expect(observation.visualFacts.map((fact) => fact.id)).toEqual(["vf-1", "vf-2", "vf-3"]);
   });
 
+  it("normalizes a rejection reason returned directly as the decision", async () => {
+    const provider = new QwenObservationProvider({
+      transport: new CapturingTransport(JSON.stringify({
+        decision: "TOO_FEW_OBJECTS",
+        sceneSummary: "画面中没有足够的清晰物品",
+        riskLabels: [],
+        visualFacts: [],
+      })),
+      model: "qwen3-vl-plus",
+      timeoutMs: 30_000,
+    });
+
+    await expect(provider.observeScene(input)).resolves.toMatchObject({
+      decision: "RETRY",
+      reasonCode: "TOO_FEW_OBJECTS",
+    });
+  });
+
+  it("normalizes a direct unsafe decision into a block result", async () => {
+    const provider = new QwenObservationProvider({
+      transport: new CapturingTransport(JSON.stringify({
+        decision: "UNSAFE",
+        sceneSummary: "画面包含敏感内容",
+        riskLabels: ["sensitive"],
+        visualFacts: [],
+      })),
+      model: "qwen3-vl-plus",
+      timeoutMs: 30_000,
+    });
+
+    await expect(provider.observeScene(input)).resolves.toMatchObject({
+      decision: "BLOCK",
+      reasonCode: "UNSAFE",
+    });
+  });
+
   it("uses a longer default timeout when the live timeout env is missing or empty", () => {
     vi.stubEnv("QWEN_API_KEY", "test-key");
     vi.stubEnv("GENERATION_TIMEOUT_MS", "");

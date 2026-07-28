@@ -41,4 +41,42 @@ describe("image upload preparation", () => {
     expect(result.size).toBeLessThan(5 * 1024 * 1024);
     expect(bitmap.close).toHaveBeenCalled();
   });
+
+  it("falls back to an image element when createImageBitmap is unavailable", async () => {
+    vi.stubGlobal("createImageBitmap", undefined);
+    const revokeObjectUrl = vi.fn();
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn(() => "blob:scene"),
+      revokeObjectURL: revokeObjectUrl,
+    });
+    class MockImage {
+      naturalWidth = 1200;
+      naturalHeight = 900;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+
+      set src(_value: string) {
+        this.onload?.();
+      }
+    }
+    vi.stubGlobal("Image", MockImage);
+    const toBlob = vi.fn((callback: BlobCallback) => {
+      callback(new Blob([new Uint8Array(120_000)], { type: "image/jpeg" }));
+    });
+    vi.spyOn(document, "createElement").mockReturnValue({
+      width: 0,
+      height: 0,
+      getContext: () => ({ drawImage: vi.fn() }),
+      toBlob,
+    } as unknown as HTMLCanvasElement);
+
+    const result = await prepareImageForUpload(new File(
+      [new Uint8Array(500_000)],
+      "room.png",
+      { type: "image/png" },
+    ));
+
+    expect(result.type).toBe("image/jpeg");
+    expect(revokeObjectUrl).toHaveBeenCalledWith("blob:scene");
+  });
 });

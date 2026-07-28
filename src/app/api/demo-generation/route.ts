@@ -73,6 +73,11 @@ export async function POST(request: Request) {
     return Response.json({ ok: true, data: result, traceId });
   } catch (error) {
     const code = errorCode(error);
+    console.error("DEMO_GENERATION_FAILED", JSON.stringify({
+      traceId,
+      code,
+      message: error instanceof Error ? error.message : null,
+    }));
     return Response.json({ ok: false, error: { code, message: "现场重建未完成，请重试", retryable: true }, traceId }, { status: 503 });
   }
 }
