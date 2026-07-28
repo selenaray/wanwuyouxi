@@ -39,6 +39,15 @@ type JudgeOptions = {
   timeoutMs: number;
 };
 
+const DEFAULT_DEEPSEEK_FACTBOOK_TIMEOUT_MS = 75_000;
+
+function readFactbookTimeoutMs(value: string | undefined) {
+  const parsed = typeof value === "string" && value.trim() !== "" ? Number(value) : NaN;
+  return Number.isFinite(parsed) && parsed >= 10_000
+    ? parsed
+    : DEFAULT_DEEPSEEK_FACTBOOK_TIMEOUT_MS;
+}
+
 export function publicSemanticV2Case(game: V2PrivateCase) {
   const semanticCase = semanticV2Case(game);
   return {
@@ -106,6 +115,6 @@ export function createDeepSeekFactbookJudgeFromEnv() {
   return new DeepSeekFactbookJudge({
     transport: createDeepSeekFactbookTransportFromEnv(),
     model: process.env.DEEPSEEK_MODEL ?? "deepseek-v4-flash",
-    timeoutMs: Number(process.env.GENERATION_TIMEOUT_MS ?? 30_000),
+    timeoutMs: readFactbookTimeoutMs(process.env.DEEPSEEK_FACTBOOK_TIMEOUT_MS),
   });
 }

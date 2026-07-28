@@ -110,4 +110,14 @@ describe("DeepSeekFactbookJudge", () => {
       DeepSeekFactbookJudge,
     );
   });
+
+  it("keeps factbook judging independent from the legacy generation timeout", () => {
+    vi.stubEnv("DEEPSEEK_API_KEY", "test-key");
+    vi.stubEnv("GENERATION_TIMEOUT_MS", "30000");
+    vi.stubEnv("DEEPSEEK_FACTBOOK_TIMEOUT_MS", "");
+
+    const judge = createDeepSeekFactbookJudgeFromEnv();
+
+    expect((judge as unknown as { options: { timeoutMs: number } }).options.timeoutMs).toBe(75_000);
+  });
 });
