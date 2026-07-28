@@ -93,11 +93,21 @@ async function compilePublishableCaseWithRetry(input: {
 
 function serializeResult(input: {
   privateCase: V2PrivateCase;
+  traceId: string;
   degraded: boolean;
   degradationReason?: string;
 }) {
-  const { privateCase } = input;
-  const correctAnswerIndex = privateCase.suspects.findIndex(
+  const rawOffset = Number.parseInt(input.traceId.slice(0, 2), 16);
+  const offset = Number.isFinite(rawOffset)
+    ? rawOffset % input.privateCase.suspects.length
+    : [...input.traceId].reduce((sum, char) => sum + char.charCodeAt(0), 0)
+      % input.privateCase.suspects.length;
+  const orderedSuspects = [
+    ...input.privateCase.suspects.slice(offset),
+    ...input.privateCase.suspects.slice(0, offset),
+  ] as V2PrivateCase["suspects"];
+  const privateCase = { ...input.privateCase, suspects: orderedSuspects };
+  const correctAnswerIndex = orderedSuspects.findIndex(
     (suspect) => suspect.id === privateCase.liarSuspectId,
   );
   if (correctAnswerIndex < 0) throw new Error("CASE_SOLUTION_MISSING");
@@ -127,7 +137,7 @@ export async function generateStatelessCase(input: Input, dependencies: Dependen
       traceId: input.traceId,
       attempts: dependencies.fallbackCompiler ? 2 : 1,
     });
-    return serializeResult({ privateCase, degraded: false });
+    return serializeResult({ privateCase, traceId: input.traceId, degraded: false });
   } catch (error) {
     if (!dependencies.fallbackCompiler) throw error;
     const privateCase = await compilePublishableCase({
@@ -139,6 +149,7 @@ export async function generateStatelessCase(input: Input, dependencies: Dependen
     });
     return serializeResult({
       privateCase,
+      traceId: input.traceId,
       degraded: true,
       degradationReason: stableErrorCode(error),
     });

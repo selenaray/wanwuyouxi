@@ -154,9 +154,11 @@ export function resolveQwenImageRuntimeConfig(env: NodeJS.ProcessEnv = process.e
   const key = resolveQwenImageApiKey(env);
   if (!key) return null;
   const shouldUseWorkspace = key.source !== "QWEN_API_KEY";
-  const workspaceId = shouldUseWorkspace ? env.DASHSCOPE_WORKSPACE_ID?.trim() || undefined : undefined;
   const explicitUrl = shouldUseWorkspace
     ? env.QWEN_IMAGE_API_URL ?? env.DASHSCOPE_IMAGE_API_URL
+    : undefined;
+  const workspaceId = shouldUseWorkspace && explicitUrl
+    ? env.DASHSCOPE_WORKSPACE_ID?.trim() || undefined
     : undefined;
 
   return {

@@ -143,6 +143,7 @@ describe("QwenImageComicProvider", () => {
     expect(resolveQwenImageRuntimeConfig({
       QWEN_IMAGE_API_KEY: "image-key",
       DASHSCOPE_WORKSPACE_ID: "ABC123",
+      DASHSCOPE_IMAGE_API_URL: "https://abc123.cn-beijing.maas.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
     })).toMatchObject({
       apiKey: "image-key",
       source: "QWEN_IMAGE_API_KEY",
@@ -151,12 +152,16 @@ describe("QwenImageComicProvider", () => {
     });
   });
 
-  it("uses the stable DashScope endpoint unless a workspace is explicitly configured", () => {
+  it("uses the stable DashScope endpoint unless a workspace endpoint is explicitly configured", () => {
     expect(resolveDashScopeImageApiUrl({
       workspaceId: undefined,
     })).toBe("https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation");
-    expect(resolveDashScopeImageApiUrl({
-      workspaceId: "ABC123",
-    })).toBe("https://abc123.cn-beijing.maas.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation");
+    expect(resolveQwenImageRuntimeConfig({
+      DASHSCOPE_API_KEY: "image-key",
+      DASHSCOPE_WORKSPACE_ID: "ABC123",
+    })).toMatchObject({
+      apiUrl: "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+      workspaceId: undefined,
+    });
   });
 });

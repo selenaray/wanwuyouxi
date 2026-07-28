@@ -30,6 +30,29 @@ describe("generateStatelessCase", () => {
     expect(JSON.stringify(result.case)).not.toContain("liarSuspectId");
   });
 
+  it("varies the displayed correct-answer position even when the compiler returns the same liar", async () => {
+    const traceIds = [
+      "00000000-0000-4000-8000-000000000000",
+      "01000000-0000-4000-8000-000000000000",
+      "02000000-0000-4000-8000-000000000000",
+    ];
+    const results = await Promise.all(traceIds.map((traceId) =>
+      generateStatelessCase({
+        imageUrl: "data:image/jpeg;base64,AA==",
+        imageWidth: 1200,
+        imageHeight: 900,
+        traceId,
+      }, {
+        vision: new FakeVisionObservationProvider(),
+        compiler: new FakeCaseFactbookCompiler(),
+        judge: new FakeCaseFactbookJudge(),
+      })));
+
+    expect(new Set(results.map((result) => result.correctAnswerIndex))).toEqual(new Set([0, 1, 2]));
+    expect(results.map((result) => result.case.suspects[result.correctAnswerIndex].name))
+      .toEqual(["江野", "江野", "江野"]);
+  });
+
   it("falls back to an observation-grounded case when live factbook generation fails", async () => {
     let compileCalls = 0;
     const result = await generateStatelessCase({
