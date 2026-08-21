@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createQwenImageComicProviderFromEnv,
+  isSingaporeQwenImageRuntime,
   QwenImageComicProvider,
   resolveDashScopeImageApiUrl,
   resolveQwenImageApiKey,
@@ -163,5 +164,24 @@ describe("QwenImageComicProvider", () => {
       apiUrl: "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
       workspaceId: undefined,
     });
+  });
+
+  it("uses the Singapore image endpoint for a dedicated image key in a Singapore runtime", () => {
+    expect(isSingaporeQwenImageRuntime({
+      QWEN_BASE_URL: "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+    })).toBe(true);
+    expect(resolveQwenImageRuntimeConfig({
+      QWEN_IMAGE_API_KEY: "singapore-image-key",
+      QWEN_BASE_URL: "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+    })).toMatchObject({
+      apiUrl: "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+      source: "QWEN_IMAGE_API_KEY",
+    });
+  });
+
+  it("converts a compatible-mode URL into the image generation endpoint", () => {
+    expect(resolveDashScopeImageApiUrl({
+      explicitUrl: "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+    })).toBe("https://workspace.ap-southeast-1.maas.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation");
   });
 });

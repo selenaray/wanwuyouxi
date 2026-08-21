@@ -53,6 +53,7 @@ const DEFAULT_QWEN_IMAGE_MODEL = "qwen-image-2.0-pro";
 const DEFAULT_QWEN_IMAGE_SIZE = "2048*2048";
 const DEFAULT_QWEN_IMAGE_TIMEOUT_MS = 150_000;
 const DEFAULT_QWEN_IMAGE_API_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
+const DEFAULT_QWEN_IMAGE_INTL_API_URL = "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
 const QWEN_IMAGE_API_PATH = "/api/v1/services/aigc/multimodal-generation/generation";
 const NEGATIVE_PROMPT = "文字，字幕，对白气泡，水印，logo，低清晰度，低画质，肢体畸形，手指畸形，脸部崩坏，构图混乱，过度明亮，过度饱和";
 const QWEN_IMAGE_CONNECT_TIMEOUT_MS = 45_000;
@@ -202,12 +203,31 @@ export function resolveDashScopeImageApiUrl(input: {
   explicitUrl?: string;
   workspaceId?: string;
   region?: string;
+  defaultUrl?: string;
 }) {
-  if (input.explicitUrl && input.explicitUrl.trim() !== "") return input.explicitUrl;
+  if (input.explicitUrl && input.explicitUrl.trim() !== "") {
+    const explicitUrl = input.explicitUrl.trim();
+    try {
+      const parsed = new URL(explicitUrl);
+      if (parsed.pathname.includes("/compatible-mode/")) {
+        return `${parsed.origin}${QWEN_IMAGE_API_PATH}`;
+      }
+    } catch {
+      return explicitUrl;
+    }
+    return explicitUrl;
+  }
   const workspaceId = input.workspaceId?.trim().toLowerCase();
-  if (!workspaceId) return DEFAULT_QWEN_IMAGE_API_URL;
+  if (!workspaceId) return input.defaultUrl ?? DEFAULT_QWEN_IMAGE_API_URL;
   const region = input.region?.trim() || "cn-beijing";
   return `https://${workspaceId}.${region}.maas.aliyuncs.com${QWEN_IMAGE_API_PATH}`;
+}
+
+export function isSingaporeQwenImageRuntime(env: NodeJS.ProcessEnv = process.env) {
+  const hint = `${env.QWEN_IMAGE_REGION ?? ""} ${env.QWEN_IMAGE_API_URL ?? ""} ${env.QWEN_BASE_URL ?? ""}`.toLowerCase();
+  return hint.includes("ap-southeast-1")
+    || hint.includes("singapore")
+    || hint.includes("dashscope-intl.aliyuncs.com");
 }
 
 export function resolveQwenImageApiKey(env: NodeJS.ProcessEnv = process.env): {
@@ -238,6 +258,9 @@ export function resolveQwenImageRuntimeConfig(env: NodeJS.ProcessEnv = process.e
       explicitUrl,
       workspaceId,
       region: env.DASHSCOPE_REGION,
+      defaultUrl: key.source === "QWEN_IMAGE_API_KEY" && isSingaporeQwenImageRuntime(env)
+        ? DEFAULT_QWEN_IMAGE_INTL_API_URL
+        : DEFAULT_QWEN_IMAGE_API_URL,
     }),
   };
 }
@@ -318,7 +341,7 @@ export function createQwenImageComicProviderFromEnv() {
       config.apiUrl,
       config.workspaceId,
     ),
-    model: process.env.QWEN_IMAGE_MODEL ?? DEFAULT_QWEN_IMAGE_MODEL,
+    model: process.env.QWEN_IMAGE_MODEL?.trim() || DEFAULT_QWEN_IMAGE_MODEL,
     size: process.env.QWEN_IMAGE_SIZE ?? DEFAULT_QWEN_IMAGE_SIZE,
     timeoutMs: readTimeoutMs(process.env.QWEN_IMAGE_TIMEOUT_MS),
   });
