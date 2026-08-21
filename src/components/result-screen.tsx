@@ -73,7 +73,7 @@ export function ResultScreen({
         <h2>{game.title}</h2>
         <p>{truth}</p>
       </article>
-      <div className="result-metrics">
+      <div className="result-metrics" aria-label="案件统计">
         <div><span>破解用时</span><strong>{minutes}:{seconds}</strong></div>
         <div><span>现场线索</span><strong>03 / 03</strong></div>
         <div><span>推理评级</span><strong>{firstAnswerCorrect ? "S" : "A"}</strong></div>
