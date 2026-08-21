@@ -179,9 +179,12 @@ export class QwenObservationProvider implements VisionObservationProvider {
       if (controller.signal.aborted) throw new ProviderError("TIMEOUT", "QWEN_OBSERVATION_TIMEOUT");
       if (error instanceof SyntaxError) throw new ProviderError("BAD_OUTPUT", "QWEN_OBSERVATION_JSON_INVALID");
       const status = typeof error === "object" && error && "status" in error ? Number(error.status) : 0;
+      // Log only the upstream status/message/cause. Never include credentials or
+      // request payloads, but preserve enough detail to distinguish an invalid
+      // key from a workspace/model permission failure in production.
+      console.error("QWEN_OBSERVATION_TRANSPORT_FAILED", JSON.stringify(transportErrorDetails(error)));
       if (status === 401 || status === 403) throw new ProviderError("AUTH_FAILED", "QWEN_OBSERVATION_AUTH_FAILED");
       if (status === 429) throw new ProviderError("RATE_LIMITED", "QWEN_OBSERVATION_RATE_LIMITED");
-      console.error("QWEN_OBSERVATION_TRANSPORT_FAILED", JSON.stringify(transportErrorDetails(error)));
       throw new ProviderError("UNAVAILABLE", "QWEN_OBSERVATION_UNAVAILABLE");
     } finally {
       clearTimeout(timeout);
@@ -197,16 +200,19 @@ function readGenerationTimeoutMs(value: string | undefined) {
 }
 
 export function createQwenObservationProviderFromEnv() {
-  const apiKey = process.env.QWEN_API_KEY;
+  const apiKey = process.env.QWEN_API_KEY?.trim();
   if (!apiKey) throw new Error("QWEN_API_KEY_MISSING");
+  const baseURL = (
+    process.env.QWEN_OBSERVATION_BASE_URL
+      ?? process.env.QWEN_BASE_URL
+      ?? "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  ).trim().replace(/\/+$/, "");
   return new QwenObservationProvider({
     transport: new OpenAIQwenObservationTransport(
       apiKey,
-      process.env.QWEN_OBSERVATION_BASE_URL
-        ?? process.env.QWEN_BASE_URL
-        ?? "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      baseURL,
     ),
-    model: process.env.QWEN_VISION_MODEL ?? "qwen3-vl-plus",
+    model: process.env.QWEN_VISION_MODEL?.trim() || "qwen3-vl-plus",
     timeoutMs: readGenerationTimeoutMs(process.env.QWEN_OBSERVATION_TIMEOUT_MS),
   });
 }

@@ -183,6 +183,22 @@ describe("QwenObservationProvider", () => {
     vi.unstubAllEnvs();
   });
 
+  it("trims copied observation configuration before constructing the live provider", () => {
+    vi.stubEnv("QWEN_API_KEY", "  test-key  ");
+    vi.stubEnv("QWEN_BASE_URL", "  https://vision.example/v1/  ");
+    vi.stubEnv("QWEN_VISION_MODEL", "  qwen3.7-plus  ");
+
+    const provider = createQwenObservationProviderFromEnv();
+    const options = (provider as unknown as {
+      options: { model: string; transport: { client: { apiKey: string; baseURL: string } } };
+    }).options;
+
+    expect(options.model).toBe("qwen3.7-plus");
+    expect(options.transport.client.apiKey).toBe("test-key");
+    expect(options.transport.client.baseURL).toBe("https://vision.example/v1");
+    vi.unstubAllEnvs();
+  });
+
   it.each([
     ["x", -1],
     ["x", 101],
