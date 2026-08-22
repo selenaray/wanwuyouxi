@@ -22,11 +22,32 @@ type CompilerOptions = {
   transport: DeepSeekTransport;
   model: string;
   timeoutMs: number;
+  provider?: "deepseek" | "qwen";
 };
 
 const DEFAULT_DEEPSEEK_FACTBOOK_TIMEOUT_MS = 60_000;
 
 type PassObservation = Extract<VisionObservation, { decision: "PASS" }>;
+
+function parseJsonObjectContent(content: string) {
+  const trimmed = content.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const unfenced = trimmed
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/, "")
+      .trim();
+    try {
+      return JSON.parse(unfenced);
+    } catch {
+      const start = unfenced.indexOf("{");
+      const end = unfenced.lastIndexOf("}");
+      if (start >= 0 && end > start) return JSON.parse(unfenced.slice(start, end + 1));
+      throw new Error("JSON_OBJECT_NOT_FOUND");
+    }
+  }
+}
 
 class OpenAIDeepSeekFactbookTransport implements DeepSeekTransport {
   private readonly client: OpenAI;
@@ -353,16 +374,34 @@ export class DeepSeekFactbookCompiler implements CaseFactbookCompiler {
     expectedVisualFacts: PassObservation["visualFacts"],
     repairSource?: V2PrivateCase,
   ) {
+    const provider = this.options.provider ?? "deepseek";
+    const errorPrefix = provider === "qwen" ? "QWEN_TEXT" : "DEEPSEEK";
+    let output: unknown;
     try {
-      const output = JSON.parse(content);
-      const game = V2PrivateCaseSchema.parse(
-        repairSource ? restoreOmittedImmutableFields(output, repairSource) : output,
-      );
-      if (!isGroundedFactbook(game, expectedVisualFacts)) throw new Error("ungrounded");
-      return game;
+      output = parseJsonObjectContent(content);
     } catch {
-      throw new ProviderError("BAD_OUTPUT", "DEEPSEEK_FACTBOOK_OUTPUT_INVALID");
+      console.warn("FACTBOOK_JSON_INVALID", JSON.stringify({ provider, contentLength: content.length }));
+      throw new ProviderError("BAD_OUTPUT", `${errorPrefix}_FACTBOOK_OUTPUT_INVALID`);
     }
+    const parsed = V2PrivateCaseSchema.safeParse(
+      repairSource ? restoreOmittedImmutableFields(output, repairSource) : output,
+    );
+    if (!parsed.success) {
+      console.warn("FACTBOOK_SCHEMA_INVALID", JSON.stringify({
+        provider,
+        issues: parsed.error.issues.slice(0, 12).map((issue) => ({
+          path: issue.path.join("."),
+          code: issue.code,
+          message: issue.message,
+        })),
+      }));
+      throw new ProviderError("BAD_OUTPUT", `${errorPrefix}_FACTBOOK_OUTPUT_INVALID`);
+    }
+    if (!isGroundedFactbook(parsed.data, expectedVisualFacts)) {
+      console.warn("FACTBOOK_GROUNDING_INVALID", JSON.stringify({ provider }));
+      throw new ProviderError("BAD_OUTPUT", `${errorPrefix}_FACTBOOK_OUTPUT_INVALID`);
+    }
+    return parsed.data;
   }
 
   async compileCase(input: {
@@ -405,7 +444,8 @@ export class DeepSeekFactbookCompiler implements CaseFactbookCompiler {
       JSON.stringify(immutableFactbookFields(repaired))
       !== JSON.stringify(immutableFactbookFields(input.game))
     ) {
-      throw new ProviderError("BAD_OUTPUT", "DEEPSEEK_FACTBOOK_OUTPUT_INVALID");
+      const prefix = this.options.provider === "qwen" ? "QWEN_TEXT" : "DEEPSEEK";
+      throw new ProviderError("BAD_OUTPUT", `${prefix}_FACTBOOK_OUTPUT_INVALID`);
     }
     return repaired;
   }
@@ -421,6 +461,7 @@ export function createDeepSeekFactbookCompilerFromEnv() {
     ),
     model: config.model,
     timeoutMs: readFactbookTimeoutMs(process.env.DEEPSEEK_FACTBOOK_TIMEOUT_MS),
+    provider: config.provider,
   });
 }
 
