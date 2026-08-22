@@ -18,6 +18,7 @@ export type DeepSeekRequest = {
   model: string;
   response_format: { type: "json_object" };
   messages: Array<{ role: "system" | "user"; content: string }>;
+  enable_thinking?: boolean;
 };
 
 export interface DeepSeekTransport {

@@ -26,6 +26,18 @@ describe("readProductionConfig", () => {
     });
   });
 
+  it("accepts Qwen text as the production factbook provider without a DeepSeek key", () => {
+    expect(readProductionConfig({
+      ...valid,
+      FACTBOOK_PROVIDER: "qwen",
+      QWEN_TEXT_API_KEY: "qwen-text-secret",
+      DEEPSEEK_API_KEY: undefined,
+    })).toMatchObject({
+      factbookProvider: "qwen",
+      textApiKey: "qwen-text-secret",
+    });
+  });
+
   it("reports missing field names without printing secret values", () => {
     expect(() => readProductionConfig({ ...valid, SESSION_SECRET: "short" }))
       .toThrow("INVALID_PRODUCTION_ENV:SESSION_SECRET");

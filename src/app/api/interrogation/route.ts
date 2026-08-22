@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { SUSPECT_ROSTER, PORTRAIT_KEYS } from "@/features/game/suspect-roster";
 import { buildInterrogationHints } from "@/server/cases/case-semantics";
+import { resolveFactbookRuntimeConfig } from "@/server/providers/deepseek-compiler";
 
 export const maxDuration = 45;
 
@@ -74,19 +75,25 @@ function fallbackReply(input: z.infer<typeof RequestSchema>) {
   return picked.slice(0, 2).join(" ");
 }
 
-async function askDeepSeek(input: z.infer<typeof RequestSchema>) {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) return fallbackReply(input);
+async function askTextModel(input: z.infer<typeof RequestSchema>) {
+  let config;
+  try {
+    config = resolveFactbookRuntimeConfig();
+  } catch {
+    return fallbackReply(input);
+  }
   const suspect = input.game.suspects.find((item) => item.id === input.suspectId);
   if (!suspect) throw new Error("SUSPECT_NOT_FOUND");
 
   const rosterMatch = SUSPECT_ROSTER.find((item) => item.name === suspect.name);
   const client = new OpenAI({
-    apiKey,
-    baseURL: process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com",
+    apiKey: config.apiKey,
+    baseURL: config.baseURL,
   });
-  const completion = await client.chat.completions.create({
-    model: process.env.DEEPSEEK_MODEL ?? "deepseek-v4-flash",
+  const request: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming & {
+    enable_thinking?: boolean;
+  } = {
+    model: config.model,
     messages: [
       {
         role: "system",
@@ -110,7 +117,9 @@ async function askDeepSeek(input: z.infer<typeof RequestSchema>) {
     ],
     temperature: 0.8,
     max_tokens: 220,
-  });
+    ...(config.disableThinking ? { enable_thinking: false } : {}),
+  };
+  const completion = await client.chat.completions.create(request);
   return completion.choices[0]?.message.content?.trim() || fallbackReply(input);
 }
 
@@ -122,7 +131,7 @@ export async function POST(request: Request) {
     if (userRounds < 1 || userRounds > 3) {
       return Response.json({ ok: false, error: { code: "ROUND_LIMIT", message: "每名嫌疑人最多审问 3 轮", retryable: false }, traceId }, { status: 400 });
     }
-    const reply = await askDeepSeek(parsed);
+    const reply = await askTextModel(parsed);
     return Response.json({
       ok: true,
       data: { reply, remainingRounds: Math.max(0, 3 - userRounds) },

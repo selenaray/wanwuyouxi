@@ -9,6 +9,7 @@ vi.mock("@/server/generation/stateless", () => ({
 }));
 
 vi.mock("@/server/providers", () => ({
+  hasFactbookRuntimeConfig: vi.fn(() => true),
   createQwenObservationProviderFromEnv: vi.fn(() => ({ kind: "qwen" })),
   createDeepSeekFactbookCompilerFromEnv: vi.fn(() => ({ kind: "deepseek-compiler" })),
   createDeepSeekFactbookJudgeFromEnv: vi.fn(() => ({ kind: "deepseek-judge" })),

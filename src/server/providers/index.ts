@@ -10,6 +10,7 @@ export { createDeepSeekCaseJudgeFromEnv, DeepSeekCaseJudge } from "./deepseek";
 export {
   createDeepSeekFactbookCompilerFromEnv,
   DeepSeekFactbookCompiler,
+  hasFactbookRuntimeConfig,
 } from "./deepseek-compiler";
 export {
   createDeepSeekFactbookJudgeFromEnv,

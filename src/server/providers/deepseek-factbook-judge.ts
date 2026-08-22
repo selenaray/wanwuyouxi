@@ -5,6 +5,7 @@ import type { V2PrivateCase } from "@/server/cases/v2-contracts";
 import type { DeepSeekRequest, DeepSeekTransport } from "./deepseek";
 import {
   createDeepSeekFactbookTransportFromEnv,
+  resolveFactbookRuntimeConfig,
   semanticV2Case,
 } from "./deepseek-compiler";
 import { DEEPSEEK_FACTBOOK_JUDGE_SYSTEM_PROMPT } from "./prompts/deepseek-factbook-judge-system";
@@ -112,9 +113,10 @@ export class DeepSeekFactbookJudge implements CaseFactbookJudge {
 }
 
 export function createDeepSeekFactbookJudgeFromEnv() {
+  const config = resolveFactbookRuntimeConfig();
   return new DeepSeekFactbookJudge({
     transport: createDeepSeekFactbookTransportFromEnv(),
-    model: process.env.DEEPSEEK_MODEL ?? "deepseek-v4-flash",
+    model: config.model,
     timeoutMs: readFactbookTimeoutMs(process.env.DEEPSEEK_FACTBOOK_TIMEOUT_MS),
   });
 }

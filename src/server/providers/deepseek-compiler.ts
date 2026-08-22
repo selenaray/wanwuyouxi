@@ -31,22 +31,68 @@ type PassObservation = Extract<VisionObservation, { decision: "PASS" }>;
 class OpenAIDeepSeekFactbookTransport implements DeepSeekTransport {
   private readonly client: OpenAI;
 
-  constructor(apiKey: string, baseURL: string) {
+  constructor(apiKey: string, baseURL: string, private readonly disableThinking = false) {
     this.client = new OpenAI({ apiKey, baseURL });
   }
 
   async create(request: DeepSeekRequest, signal: AbortSignal) {
-    const completion = await this.client.chat.completions.create(request, { signal });
+    const completion = await this.client.chat.completions.create({
+      ...request,
+      ...(this.disableThinking ? { enable_thinking: false } : {}),
+    }, { signal });
     return { content: completion.choices[0]?.message.content ?? "" };
   }
 }
 
-export function createDeepSeekFactbookTransportFromEnv(): DeepSeekTransport {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
+export type FactbookRuntimeConfig = {
+  provider: "deepseek" | "qwen";
+  apiKey: string;
+  baseURL: string;
+  model: string;
+  disableThinking: boolean;
+};
+
+export function resolveFactbookRuntimeConfig(env: NodeJS.ProcessEnv = process.env): FactbookRuntimeConfig {
+  const provider = env.FACTBOOK_PROVIDER?.trim().toLowerCase() === "qwen" ? "qwen" : "deepseek";
+  if (provider === "qwen") {
+    const apiKey = env.QWEN_TEXT_API_KEY?.trim() || env.QWEN_API_KEY?.trim();
+    const baseURL = env.QWEN_TEXT_BASE_URL?.trim() || env.QWEN_BASE_URL?.trim();
+    if (!apiKey) throw new Error("QWEN_TEXT_API_KEY_MISSING");
+    if (!baseURL) throw new Error("QWEN_TEXT_BASE_URL_MISSING");
+    return {
+      provider,
+      apiKey,
+      baseURL,
+      model: env.QWEN_TEXT_MODEL?.trim() || "qwen3.7-plus",
+      disableThinking: true,
+    };
+  }
+
+  const apiKey = env.DEEPSEEK_API_KEY?.trim();
   if (!apiKey) throw new Error("DEEPSEEK_API_KEY_MISSING");
-  return new OpenAIDeepSeekFactbookTransport(
+  return {
+    provider,
     apiKey,
-    process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com",
+    baseURL: env.DEEPSEEK_BASE_URL?.trim() || "https://api.deepseek.com",
+    model: env.DEEPSEEK_MODEL?.trim() || "deepseek-v4-flash",
+    disableThinking: false,
+  };
+}
+
+export function hasFactbookRuntimeConfig(env: NodeJS.ProcessEnv = process.env) {
+  const provider = env.FACTBOOK_PROVIDER?.trim().toLowerCase() === "qwen" ? "qwen" : "deepseek";
+  return provider === "qwen"
+    ? Boolean((env.QWEN_TEXT_API_KEY || env.QWEN_API_KEY)?.trim()
+      && (env.QWEN_TEXT_BASE_URL || env.QWEN_BASE_URL)?.trim())
+    : Boolean(env.DEEPSEEK_API_KEY?.trim());
+}
+
+export function createDeepSeekFactbookTransportFromEnv(): DeepSeekTransport {
+  const config = resolveFactbookRuntimeConfig();
+  return new OpenAIDeepSeekFactbookTransport(
+    config.apiKey,
+    config.baseURL,
+    config.disableThinking,
   );
 }
 
@@ -366,9 +412,14 @@ export class DeepSeekFactbookCompiler implements CaseFactbookCompiler {
 }
 
 export function createDeepSeekFactbookCompilerFromEnv() {
+  const config = resolveFactbookRuntimeConfig();
   return new DeepSeekFactbookCompiler({
-    transport: createDeepSeekFactbookTransportFromEnv(),
-    model: process.env.DEEPSEEK_MODEL ?? "deepseek-v4-flash",
+    transport: new OpenAIDeepSeekFactbookTransport(
+      config.apiKey,
+      config.baseURL,
+      config.disableThinking,
+    ),
+    model: config.model,
     timeoutMs: readFactbookTimeoutMs(process.env.DEEPSEEK_FACTBOOK_TIMEOUT_MS),
   });
 }

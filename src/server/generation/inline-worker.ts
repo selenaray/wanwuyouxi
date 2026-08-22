@@ -9,6 +9,7 @@ import {
   createDeepSeekFactbookCompilerFromEnv,
   createDeepSeekFactbookJudgeFromEnv,
   createQwenObservationProviderFromEnv,
+  hasFactbookRuntimeConfig,
 } from "@/server/providers";
 import { getImageStorage } from "@/server/storage";
 
@@ -56,10 +57,10 @@ export function createLocalGenerationTrigger(db: AppDatabase) {
     vision: process.env.QWEN_API_KEY
       ? createQwenObservationProviderFromEnv()
       : new FakeVisionObservationProvider(),
-    compiler: process.env.DEEPSEEK_API_KEY
+    compiler: hasFactbookRuntimeConfig()
       ? createDeepSeekFactbookCompilerFromEnv()
       : new FakeCaseFactbookCompiler(),
-    judge: process.env.DEEPSEEK_API_KEY
+    judge: hasFactbookRuntimeConfig()
       ? createDeepSeekFactbookJudgeFromEnv()
       : new FakeCaseFactbookJudge(),
   };

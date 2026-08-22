@@ -9,6 +9,7 @@ import { SUSPECT_ROSTER } from "@/features/game/suspect-roster";
 import {
   DeepSeekFactbookCompiler,
   createDeepSeekFactbookCompilerFromEnv,
+  resolveFactbookRuntimeConfig,
   semanticV2Case,
 } from "./deepseek-compiler";
 import type { DeepSeekRequest, DeepSeekTransport } from "./deepseek";
@@ -343,5 +344,32 @@ describe("DeepSeekFactbookCompiler", () => {
     const compiler = createDeepSeekFactbookCompilerFromEnv();
 
     expect((compiler as unknown as { options: { timeoutMs: number } }).options.timeoutMs).toBe(75_000);
+  });
+
+  it("supports Qwen text generation for factbook compilation", () => {
+    expect(resolveFactbookRuntimeConfig({
+      FACTBOOK_PROVIDER: "qwen",
+      QWEN_TEXT_API_KEY: "qwen-text-key",
+      QWEN_TEXT_BASE_URL: "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      QWEN_TEXT_MODEL: "qwen3.7-plus",
+    })).toEqual({
+      provider: "qwen",
+      apiKey: "qwen-text-key",
+      baseURL: "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      model: "qwen3.7-plus",
+      disableThinking: true,
+    });
+  });
+
+  it("falls back to the visual Qwen key and host when dedicated text values are absent", () => {
+    expect(resolveFactbookRuntimeConfig({
+      FACTBOOK_PROVIDER: "qwen",
+      QWEN_API_KEY: "shared-qwen-key",
+      QWEN_BASE_URL: "https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+    })).toMatchObject({
+      apiKey: "shared-qwen-key",
+      model: "qwen3.7-plus",
+      disableThinking: true,
+    });
   });
 });

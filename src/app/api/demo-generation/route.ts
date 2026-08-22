@@ -7,6 +7,7 @@ import {
   createDeepSeekFactbookCompilerFromEnv,
   createDeepSeekFactbookJudgeFromEnv,
   createQwenObservationProviderFromEnv,
+  hasFactbookRuntimeConfig,
 } from "@/server/providers";
 import { ProviderError } from "@/server/providers/types";
 
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
     const height = Number(form.get("height")) || 900;
     if (width < 1 || height < 1 || width > 10000 || height > 10000) throw new Error("INVALID_IMAGE");
     const imageUrl = `data:${image.type || "image/jpeg"};base64,${bytes.toString("base64")}`;
-    const hasLiveModels = Boolean(process.env.QWEN_API_KEY && process.env.DEEPSEEK_API_KEY);
+    const hasLiveModels = Boolean(process.env.QWEN_API_KEY && hasFactbookRuntimeConfig());
     const input = { imageUrl, imageWidth: width, imageHeight: height, traceId };
     const result = hasLiveModels
       ? await generateWithRetry(input, {
