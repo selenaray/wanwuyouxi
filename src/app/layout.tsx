@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 
-import "./globals.css";
+import "./site.css";
 
 export const metadata: Metadata = {
   title: "万物有戏",
