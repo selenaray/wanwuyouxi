@@ -69,6 +69,23 @@ describe("DeepSeekFactbookJudge", () => {
     expect(JSON.stringify(payload)).not.toContain("traceId");
   });
 
+  it("normalizes a fenced Qwen verdict with harmless extra fields", async () => {
+    const judge = new DeepSeekFactbookJudge({
+      transport: new CapturingTransport([
+        '```json\n{"valid":true,"confidence":1.2,"issues":[{"code":"COPY_QUALITY","field":"title","message":"unused"}],"note":"extra"}\n```',
+      ]),
+      model: "qwen3.7-plus",
+      timeoutMs: 30_000,
+      provider: "qwen",
+    });
+
+    await expect(judge.validateCase({ game: validGame, traceId: "trace" })).resolves.toEqual({
+      valid: true,
+      confidence: 1,
+      issues: [],
+    });
+  });
+
   it.each([
     ["malformed JSON", "not-json"],
     ["out-of-range confidence", JSON.stringify({ valid: true, confidence: 1.01, issues: [] })],

@@ -5,6 +5,7 @@ import type { V2PrivateCase } from "@/server/cases/v2-contracts";
 import type { DeepSeekRequest, DeepSeekTransport } from "./deepseek";
 import {
   createDeepSeekFactbookTransportFromEnv,
+  parseJsonObjectContent,
   resolveFactbookRuntimeConfig,
   semanticV2Case,
 } from "./deepseek-compiler";
@@ -38,6 +39,7 @@ type JudgeOptions = {
   transport: DeepSeekTransport;
   model: string;
   timeoutMs: number;
+  provider?: "deepseek" | "qwen";
 };
 
 const DEFAULT_DEEPSEEK_FACTBOOK_TIMEOUT_MS = 60_000;
@@ -104,12 +106,56 @@ export class DeepSeekFactbookJudge implements CaseFactbookJudge {
         { role: "user", content: JSON.stringify({ case: publicSemanticV2Case(input.game) }) },
       ],
     });
+    const provider = this.options.provider ?? "deepseek";
+    const prefix = provider === "qwen" ? "QWEN_TEXT" : "DEEPSEEK";
+    let output: unknown;
     try {
-      return SemanticValidationSchema.parse(JSON.parse(response.content));
+      output = parseJsonObjectContent(response.content);
     } catch {
-      throw new ProviderError("BAD_OUTPUT", "DEEPSEEK_FACTBOOK_JUDGE_OUTPUT_INVALID");
+      throw new ProviderError("BAD_OUTPUT", `${prefix}_FACTBOOK_JUDGE_OUTPUT_INVALID`, "json");
     }
+    const normalized = provider === "qwen" ? normalizeSemanticValidation(output) : output;
+    const parsed = SemanticValidationSchema.safeParse(normalized);
+    if (!parsed.success) {
+      const diagnostic = parsed.error.issues.slice(0, 8)
+        .map((issue) => `${issue.path.join(".")}:${issue.code}`)
+        .join("|")
+        .slice(0, 300);
+      console.warn("FACTBOOK_JUDGE_SCHEMA_INVALID", JSON.stringify({ provider, diagnostic }));
+      throw new ProviderError("BAD_OUTPUT", `${prefix}_FACTBOOK_JUDGE_OUTPUT_INVALID`, diagnostic);
+    }
+    return parsed.data;
   }
+}
+
+const VALIDATION_CODES = new Set([
+  "NON_UNIQUE", "CONTRADICTION", "OUTSIDE_EVIDENCE", "UNSAFE", "COPY_QUALITY",
+]);
+
+function normalizeSemanticValidation(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  const valid = record.valid === true;
+  const confidenceValue = typeof record.confidence === "number" ? record.confidence : 0.5;
+  const confidence = Math.min(1, Math.max(0, confidenceValue));
+  const issues = Array.isArray(record.issues)
+    ? record.issues.flatMap((issue) => {
+      if (typeof issue !== "object" || issue === null || Array.isArray(issue)) return [];
+      const item = issue as Record<string, unknown>;
+      if (
+        typeof item.code !== "string"
+        || !VALIDATION_CODES.has(item.code)
+        || typeof item.field !== "string"
+        || typeof item.message !== "string"
+      ) return [];
+      return [{
+        code: item.code,
+        field: item.field.slice(0, 80),
+        message: item.message.slice(0, 120),
+      }];
+    })
+    : [];
+  return { valid, confidence, issues: valid ? [] : issues };
 }
 
 export function createDeepSeekFactbookJudgeFromEnv() {
@@ -118,5 +164,6 @@ export function createDeepSeekFactbookJudgeFromEnv() {
     transport: createDeepSeekFactbookTransportFromEnv(),
     model: config.model,
     timeoutMs: readFactbookTimeoutMs(process.env.DEEPSEEK_FACTBOOK_TIMEOUT_MS),
+    provider: config.provider,
   });
 }

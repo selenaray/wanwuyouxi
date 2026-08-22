@@ -29,7 +29,7 @@ const DEFAULT_DEEPSEEK_FACTBOOK_TIMEOUT_MS = 60_000;
 
 type PassObservation = Extract<VisionObservation, { decision: "PASS" }>;
 
-function parseJsonObjectContent(content: string) {
+export function parseJsonObjectContent(content: string) {
   const trimmed = content.trim();
   try {
     return JSON.parse(trimmed);
