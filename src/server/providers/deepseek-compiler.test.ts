@@ -88,6 +88,42 @@ describe("DeepSeekFactbookCompiler", () => {
     });
   });
 
+  it("normalizes invalid Qwen fact references before deterministic validation", async () => {
+    const drifted = {
+      ...validV2Case,
+      claims: validV2Case.claims.map((claim) => ({
+        ...claim,
+        factRefs: ["timeline-id-invented-by-model"],
+        evidenceRefs: ["evidence-id-invented-by-model"],
+      })),
+      suspects: validV2Case.suspects.map((suspect) => ({
+        ...suspect,
+        allowedFactIds: ["fact-id-invented-by-model"],
+      })),
+      contradiction: {
+        ...validV2Case.contradiction,
+        claimId: "claim-id-invented-by-model",
+        evidenceId: "evidence-id-invented-by-model",
+      },
+    };
+    const compiler = new DeepSeekFactbookCompiler({
+      transport: new CapturingTransport([JSON.stringify(drifted)]),
+      model: "qwen3.7-plus",
+      timeoutMs: 30_000,
+      provider: "qwen",
+    });
+
+    const compiled = await compiler.compileCase({ observation: validObservation, traceId: "trace" });
+
+    expect(compiled.claims.every((claim) => claim.factRefs[0]?.startsWith("tf-"))).toBe(true);
+    expect(compiled.claims.every((claim) => claim.evidenceRefs[0]?.startsWith("ev-"))).toBe(true);
+    expect(compiled.suspects.every((suspect) => suspect.allowedFactIds.length > 0)).toBe(true);
+    expect(compiled.contradiction).toMatchObject({
+      claimId: "cl-qiao",
+      evidenceId: "ev-cup",
+    });
+  });
+
   it("rejects duplicate portrait keys", async () => {
     const duplicatePortraits = {
       ...validV2Case,

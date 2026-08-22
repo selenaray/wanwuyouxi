@@ -223,6 +223,84 @@ function restoreCompileObservationFields(
   return { ...value, visualFacts, evidence };
 }
 
+function normalizeCompileReferences(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const timelineFacts = Array.isArray(value.timelineFacts) ? value.timelineFacts : [];
+  const evidence = Array.isArray(value.evidence) ? value.evidence : [];
+  const claims = Array.isArray(value.claims) ? value.claims : [];
+  const suspects = Array.isArray(value.suspects) ? value.suspects : [];
+  const timelineIds = timelineFacts
+    .filter(isRecord)
+    .map((item) => item.id)
+    .filter((id): id is string => typeof id === "string");
+  const evidenceIds = new Set(evidence
+    .filter(isRecord)
+    .map((item) => item.id)
+    .filter((id): id is string => typeof id === "string"));
+  const evidenceBySuspect = new Map(evidence
+    .filter(isRecord)
+    .filter((item) => typeof item.suspectId === "string" && typeof item.id === "string")
+    .map((item) => [item.suspectId as string, item.id as string]));
+
+  const normalizedClaims = claims.map((claim, index) => {
+    if (!isRecord(claim)) return claim;
+    const factRefs = Array.isArray(claim.factRefs)
+      ? claim.factRefs.filter((id): id is string => typeof id === "string" && timelineIds.includes(id))
+      : [];
+    const evidenceRefs = Array.isArray(claim.evidenceRefs)
+      ? claim.evidenceRefs.filter((id): id is string => typeof id === "string" && evidenceIds.has(id))
+      : [];
+    const mappedEvidence = typeof claim.suspectId === "string"
+      ? evidenceBySuspect.get(claim.suspectId)
+      : undefined;
+    return {
+      ...claim,
+      factRefs: factRefs.length > 0
+        ? [...new Set(factRefs)]
+        : timelineIds.length > 0 ? [timelineIds[index % timelineIds.length]] : factRefs,
+      evidenceRefs: mappedEvidence
+        ? [mappedEvidence]
+        : [...new Set(evidenceRefs)],
+    };
+  });
+  const claimIds = new Set(normalizedClaims
+    .filter(isRecord)
+    .map((item) => item.id)
+    .filter((id): id is string => typeof id === "string"));
+  const claimBySuspect = new Map(normalizedClaims
+    .filter(isRecord)
+    .filter((item) => typeof item.suspectId === "string" && typeof item.id === "string")
+    .map((item) => [item.suspectId as string, item.id as string]));
+  const allowedIds = new Set([...timelineIds, ...claimIds]);
+  const normalizedSuspects = suspects.map((suspect, index) => {
+    if (!isRecord(suspect)) return suspect;
+    const allowedFactIds = Array.isArray(suspect.allowedFactIds)
+      ? suspect.allowedFactIds.filter((id): id is string => typeof id === "string" && allowedIds.has(id))
+      : [];
+    const ownClaim = typeof suspect.id === "string" ? claimBySuspect.get(suspect.id) : undefined;
+    return {
+      ...suspect,
+      allowedFactIds: allowedFactIds.length > 0
+        ? [...new Set(allowedFactIds)]
+        : ownClaim ? [ownClaim] : timelineIds.length > 0 ? [timelineIds[index % timelineIds.length]] : [],
+    };
+  });
+  const liarId = typeof value.liarSuspectId === "string" ? value.liarSuspectId : "";
+  const contradiction = isRecord(value.contradiction)
+    ? {
+      ...value.contradiction,
+      claimId: claimBySuspect.get(liarId) ?? value.contradiction.claimId,
+      evidenceId: evidenceBySuspect.get(liarId) ?? value.contradiction.evidenceId,
+    }
+    : value.contradiction;
+  return {
+    ...value,
+    claims: normalizedClaims,
+    suspects: normalizedSuspects,
+    contradiction,
+  };
+}
+
 function restoreVisualFacts(
   value: unknown,
   originals: Map<string, V2PrivateCase["visualFacts"][number]>,
@@ -400,9 +478,14 @@ export class DeepSeekFactbookCompiler implements CaseFactbookCompiler {
       console.warn("FACTBOOK_JSON_INVALID", JSON.stringify({ provider, contentLength: content.length }));
       throw new ProviderError("BAD_OUTPUT", `${errorPrefix}_FACTBOOK_OUTPUT_INVALID`);
     }
-    const parsed = V2PrivateCaseSchema.safeParse(repairSource
+    const groundedOutput = repairSource
       ? restoreOmittedImmutableFields(output, repairSource)
-      : restoreCompileObservationFields(output, expectedVisualFacts));
+      : restoreCompileObservationFields(output, expectedVisualFacts);
+    const parsed = V2PrivateCaseSchema.safeParse(
+      provider === "qwen" && !repairSource
+        ? normalizeCompileReferences(groundedOutput)
+        : groundedOutput,
+    );
     if (!parsed.success) {
       const diagnostic = parsed.error.issues.slice(0, 12)
         .map((issue) => `${issue.path.join(".")}:${issue.code}`)
