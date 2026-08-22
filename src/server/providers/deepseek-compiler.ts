@@ -275,51 +275,44 @@ function restoreSuspects(
   });
 }
 
-function isGroundedFactbook(game: V2PrivateCase, expectedVisualFacts: PassObservation["visualFacts"]) {
-  if (JSON.stringify(game.visualFacts) !== JSON.stringify(expectedVisualFacts)) return false;
-  if (!hasUniqueValues(game.suspects.map((suspect) => suspect.portraitKey))) return false;
+function groundingIssue(game: V2PrivateCase, expectedVisualFacts: PassObservation["visualFacts"]) {
+  if (JSON.stringify(game.visualFacts) !== JSON.stringify(expectedVisualFacts)) return "visual-facts";
+  if (!hasUniqueValues(game.suspects.map((suspect) => suspect.portraitKey))) return "duplicate-portrait";
 
   const suspectIds = new Set(game.suspects.map((suspect) => suspect.id));
   const timelineIds = new Set(game.timelineFacts.map((fact) => fact.id));
   const evidenceIds = new Set(game.evidence.map((evidence) => evidence.id));
   const claimIds = new Set(game.claims.map((claim) => claim.id));
   const allowedFactIds = new Set([...timelineIds, ...claimIds]);
-  if (
-    suspectIds.size !== game.suspects.length
-    || timelineIds.size !== game.timelineFacts.length
-    || evidenceIds.size !== game.evidence.length
-    || claimIds.size !== game.claims.length
-    || !hasUniqueValues(game.evidence.map((evidence) => evidence.visualFactId))
-    || !hasUniqueValues(game.evidence.map((evidence) => evidence.suspectId))
-    || !hasUniqueValues(game.claims.map((claim) => claim.suspectId))
-  ) return false;
+  if (suspectIds.size !== game.suspects.length) return "duplicate-suspect-id";
+  if (timelineIds.size !== game.timelineFacts.length) return "duplicate-timeline-id";
+  if (evidenceIds.size !== game.evidence.length) return "duplicate-evidence-id";
+  if (claimIds.size !== game.claims.length) return "duplicate-claim-id";
+  if (!hasUniqueValues(game.evidence.map((evidence) => evidence.visualFactId))) return "duplicate-evidence-fact";
+  if (!hasUniqueValues(game.evidence.map((evidence) => evidence.suspectId))) return "duplicate-evidence-suspect";
+  if (!hasUniqueValues(game.claims.map((claim) => claim.suspectId))) return "duplicate-claim-suspect";
 
   const visualFactsById = new Map(game.visualFacts.map((fact) => [fact.id, fact]));
   for (const evidence of game.evidence) {
     const fact = visualFactsById.get(evidence.visualFactId);
-    if (
-      !fact
-      || !suspectIds.has(evidence.suspectId)
-      || evidence.objectName !== fact.objectName
-      || evidence.regionHint !== fact.regionHint
-      || evidence.x !== fact.x
-      || evidence.y !== fact.y
-      || evidence.radius !== fact.radius
-      || evidence.confidence !== fact.confidence
-    ) return false;
+    if (!fact) return "evidence-fact-missing";
+    if (!suspectIds.has(evidence.suspectId)) return "evidence-suspect-missing";
+    if (evidence.objectName !== fact.objectName) return "evidence-object-drift";
+    if (evidence.regionHint !== fact.regionHint) return "evidence-region-drift";
+    if (evidence.x !== fact.x || evidence.y !== fact.y) return "evidence-coordinate-drift";
+    if (evidence.radius !== fact.radius) return "evidence-radius-drift";
+    if (evidence.confidence !== fact.confidence) return "evidence-confidence-drift";
   }
 
   for (const claim of game.claims) {
-    if (
-      !suspectIds.has(claim.suspectId)
-      || claim.factRefs.some((reference) => !timelineIds.has(reference))
-      || claim.evidenceRefs.some((reference) => !evidenceIds.has(reference))
-    ) return false;
+    if (!suspectIds.has(claim.suspectId)) return "claim-suspect-missing";
+    if (claim.factRefs.some((reference) => !timelineIds.has(reference))) return "claim-fact-ref-missing";
+    if (claim.evidenceRefs.some((reference) => !evidenceIds.has(reference))) return "claim-evidence-ref-missing";
   }
 
   if (game.suspects.some(
     (suspect) => suspect.allowedFactIds.some((reference) => !allowedFactIds.has(reference)),
-  )) return false;
+  )) return "allowed-fact-ref-missing";
 
   const contradictionClaim = game.claims.find(
     (claim) => claim.id === game.contradiction.claimId,
@@ -327,13 +320,12 @@ function isGroundedFactbook(game: V2PrivateCase, expectedVisualFacts: PassObserv
   const contradictionEvidence = game.evidence.find(
     (evidence) => evidence.id === game.contradiction.evidenceId,
   );
-  return Boolean(
-    suspectIds.has(game.liarSuspectId)
-    && contradictionClaim
-    && contradictionEvidence
-    && contradictionClaim.suspectId === game.liarSuspectId
-    && contradictionEvidence.suspectId === game.liarSuspectId,
-  );
+  if (!suspectIds.has(game.liarSuspectId)) return "liar-missing";
+  if (!contradictionClaim) return "contradiction-claim-missing";
+  if (!contradictionEvidence) return "contradiction-evidence-missing";
+  if (contradictionClaim.suspectId !== game.liarSuspectId) return "contradiction-claim-mismatch";
+  if (contradictionEvidence.suspectId !== game.liarSuspectId) return "contradiction-evidence-mismatch";
+  return null;
 }
 
 function immutableFactbookFields(game: V2PrivateCase) {
@@ -426,9 +418,10 @@ export class DeepSeekFactbookCompiler implements CaseFactbookCompiler {
       }));
       throw new ProviderError("BAD_OUTPUT", `${errorPrefix}_FACTBOOK_OUTPUT_INVALID`, diagnostic);
     }
-    if (!isGroundedFactbook(parsed.data, expectedVisualFacts)) {
-      console.warn("FACTBOOK_GROUNDING_INVALID", JSON.stringify({ provider }));
-      throw new ProviderError("BAD_OUTPUT", `${errorPrefix}_FACTBOOK_OUTPUT_INVALID`, "grounding");
+    const issue = groundingIssue(parsed.data, expectedVisualFacts);
+    if (issue) {
+      console.warn("FACTBOOK_GROUNDING_INVALID", JSON.stringify({ provider, issue }));
+      throw new ProviderError("BAD_OUTPUT", `${errorPrefix}_FACTBOOK_OUTPUT_INVALID`, issue);
     }
     return parsed.data;
   }
