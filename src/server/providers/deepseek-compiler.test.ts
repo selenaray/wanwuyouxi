@@ -67,6 +67,27 @@ describe("DeepSeekFactbookCompiler", () => {
     });
   });
 
+  it("restores observation-owned fields instead of trusting the text model to copy them", async () => {
+    const drifted = {
+      ...validV2Case,
+      visualFacts: validV2Case.visualFacts.map((fact, index) => index === 0
+        ? { ...fact, objectName: "模型改写", x: 0.99 }
+        : fact),
+      evidence: validV2Case.evidence.map((evidence, index) => index === 0
+        ? { ...evidence, objectName: "模型改写", x: 0.99 }
+        : evidence),
+    };
+    const compiler = createCompiler(new CapturingTransport([JSON.stringify(drifted)]));
+
+    const compiled = await compiler.compileCase({ observation: validObservation, traceId: "trace" });
+
+    expect(compiled.visualFacts).toEqual(validObservation.visualFacts);
+    expect(compiled.evidence[0]).toMatchObject({
+      objectName: validObservation.visualFacts[0].objectName,
+      x: validObservation.visualFacts[0].x,
+    });
+  });
+
   it("rejects duplicate portrait keys", async () => {
     const duplicatePortraits = {
       ...validV2Case,

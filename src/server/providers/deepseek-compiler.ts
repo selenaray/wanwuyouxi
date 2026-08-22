@@ -198,6 +198,31 @@ function restoreOmittedImmutableFields(value: unknown, original: V2PrivateCase):
   };
 }
 
+function restoreCompileObservationFields(
+  value: unknown,
+  visualFacts: PassObservation["visualFacts"],
+): unknown {
+  if (!isRecord(value)) return value;
+  const factsById = new Map(visualFacts.map((fact) => [fact.id, fact]));
+  const evidence = Array.isArray(value.evidence)
+    ? value.evidence.map((item) => {
+      if (!isRecord(item) || typeof item.visualFactId !== "string") return item;
+      const fact = factsById.get(item.visualFactId);
+      if (!fact) return item;
+      return {
+        ...item,
+        objectName: fact.objectName,
+        regionHint: fact.regionHint,
+        x: fact.x,
+        y: fact.y,
+        radius: fact.radius,
+        confidence: fact.confidence,
+      };
+    })
+    : value.evidence;
+  return { ...value, visualFacts, evidence };
+}
+
 function restoreVisualFacts(
   value: unknown,
   originals: Map<string, V2PrivateCase["visualFacts"][number]>,
@@ -383,9 +408,9 @@ export class DeepSeekFactbookCompiler implements CaseFactbookCompiler {
       console.warn("FACTBOOK_JSON_INVALID", JSON.stringify({ provider, contentLength: content.length }));
       throw new ProviderError("BAD_OUTPUT", `${errorPrefix}_FACTBOOK_OUTPUT_INVALID`);
     }
-    const parsed = V2PrivateCaseSchema.safeParse(
-      repairSource ? restoreOmittedImmutableFields(output, repairSource) : output,
-    );
+    const parsed = V2PrivateCaseSchema.safeParse(repairSource
+      ? restoreOmittedImmutableFields(output, repairSource)
+      : restoreCompileObservationFields(output, expectedVisualFacts));
     if (!parsed.success) {
       const diagnostic = parsed.error.issues.slice(0, 12)
         .map((issue) => `${issue.path.join(".")}:${issue.code}`)
