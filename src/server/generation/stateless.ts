@@ -96,6 +96,7 @@ function serializeResult(input: {
   traceId: string;
   degraded: boolean;
   degradationReason?: string;
+  degradationDiagnostic?: string;
 }) {
   const rawOffset = Number.parseInt(input.traceId.slice(0, 2), 16);
   const offset = Number.isFinite(rawOffset)
@@ -118,6 +119,7 @@ function serializeResult(input: {
     truth: `${privateCase.truth.summary}${privateCase.contradiction.explanation}${privateCase.truth.motive}`,
     degraded: input.degraded,
     degradationReason: input.degradationReason,
+    degradationDiagnostic: input.degradationDiagnostic,
   };
 }
 
@@ -152,6 +154,7 @@ export async function generateStatelessCase(input: Input, dependencies: Dependen
       traceId: input.traceId,
       degraded: true,
       degradationReason: stableErrorCode(error),
+      degradationDiagnostic: error instanceof ProviderError ? error.diagnostic : undefined,
     });
   }
 }

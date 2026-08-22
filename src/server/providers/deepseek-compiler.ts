@@ -387,6 +387,10 @@ export class DeepSeekFactbookCompiler implements CaseFactbookCompiler {
       repairSource ? restoreOmittedImmutableFields(output, repairSource) : output,
     );
     if (!parsed.success) {
+      const diagnostic = parsed.error.issues.slice(0, 12)
+        .map((issue) => `${issue.path.join(".")}:${issue.code}`)
+        .join("|")
+        .slice(0, 500);
       console.warn("FACTBOOK_SCHEMA_INVALID", JSON.stringify({
         provider,
         issues: parsed.error.issues.slice(0, 12).map((issue) => ({
@@ -395,11 +399,11 @@ export class DeepSeekFactbookCompiler implements CaseFactbookCompiler {
           message: issue.message,
         })),
       }));
-      throw new ProviderError("BAD_OUTPUT", `${errorPrefix}_FACTBOOK_OUTPUT_INVALID`);
+      throw new ProviderError("BAD_OUTPUT", `${errorPrefix}_FACTBOOK_OUTPUT_INVALID`, diagnostic);
     }
     if (!isGroundedFactbook(parsed.data, expectedVisualFacts)) {
       console.warn("FACTBOOK_GROUNDING_INVALID", JSON.stringify({ provider }));
-      throw new ProviderError("BAD_OUTPUT", `${errorPrefix}_FACTBOOK_OUTPUT_INVALID`);
+      throw new ProviderError("BAD_OUTPUT", `${errorPrefix}_FACTBOOK_OUTPUT_INVALID`, "grounding");
     }
     return parsed.data;
   }

@@ -73,12 +73,21 @@ export type ProviderErrorCode =
   | "AUTH_FAILED";
 
 export class ProviderError extends Error {
+  readonly diagnostic?: string;
+
   constructor(
     readonly code: ProviderErrorCode,
     message: string,
+    diagnostic?: string,
   ) {
     super(message);
     this.name = "ProviderError";
+    Object.defineProperty(this, "diagnostic", {
+      value: diagnostic,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    });
   }
 
   get retryable() {
